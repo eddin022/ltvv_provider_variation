@@ -1,0 +1,58 @@
+# Patient data — never commit
+*.parquet
+*.csv
+*.fst
+*.duckdb
+*.feather
+*.arrow
+*.pkl
+*.pickle
+*.rds
+!umn_models_to_share/*.rds
+*.rda
+*.xlsx
+*.xls
+*.log
+*.html
+
+# Site-specific config — each site maintains their own
+config.json
+
+# AI assistant context — not for partner sites
+CLAUDE.md
+
+# Notebooks are generated from scripts via jupytext — not committed
+*.ipynb
+
+# Output files — results stay local until formally shared
+output/
+output_no_share/
+output_to_box/
+
+# Lead-site-only pooled analysis — not shared with partner sites
+pooled_results.ipynb
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+
+# R
+renv/library/
+renv/local/
+renv/cellar/
+renv/python/
+renv/staging/
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# System
+.DS_Store
+Thumbs.db
+.claude/
