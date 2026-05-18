@@ -3,7 +3,7 @@ library(dplyr)
 library(lubridate)
 library(jsonlite)
 
-source("Z:/DataStageData/Eddington/R Library/functions/laps2_date_251118.R")
+source("Z:/DataStageData/Eddington/R Library/functions/laps2_date_260402.R")
 
 append_status <- function(script_name, step, extra = list()) {
   entry <- c(
@@ -27,6 +27,7 @@ txt[1] <- sub("^\ufeff", "", txt[1])
 cfg <- fromJSON(paste(txt, collapse = "\n"))
 
 clif_path <- cfg$paths$clif
+user_timezone <- cfg$R_timezone
 append_status(script_name, "loaded_config", list(clif_path = clif_path))
 
 # %%
@@ -49,7 +50,7 @@ head(data_hospitalizations, 5)
 length(data_hospitalizations$hospitalizations_joined_id)
 
 # %%
-laps2 <- laps2_date(data = data_hospitalizations)
+laps2 <- laps2_date(data = data_hospitalizations, timezone = user_timezone)
 append_status(script_name, "computed_laps2")
 
 # %%
