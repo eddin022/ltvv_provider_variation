@@ -21,8 +21,6 @@ config.json
 # AI assistant context — not for partner sites
 CLAUDE.md
 
-# Notebooks are generated from scripts via jupytext — not committed
-*.ipynb
 
 # Output files — results stay local until formally shared
 output/
