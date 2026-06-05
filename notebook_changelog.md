@@ -145,6 +145,32 @@ Output: `raw_vt_df` with columns `hospitalizations_joined_id`, `date`, `tidal_vo
 
 ---
 
+## 2026-06-05 (Task 2 — Replaced derived icu_type with raw location_type + department_type)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 2 — Remove arbitrary CASE mapping; use raw ADT fields directly
+
+### ltvv_wrangler.ipynb — icu_type cell (id=22) — rewritten
+**What:** Removed the CASE expression entirely. The `adt_icu` CTE now selects `location_type` and `department_type` raw. Output columns are `icu_location_type` (5 levels: general_icu, medical_icu, mixed_cardiothoracic_icu, mixed_neuro_icu, cardiac_icu) and `icu_department_type` (7 distinct values). Summary query now shows both columns with counts.
+**Why:** The CASE mapping to Medical/Neurologic/Cardiac/Mixed was arbitrary and unmaintainable. `location_type` already has 5 self-descriptive, clinically meaningful levels that directly serve as the Task 2 fixed effect without any translation layer. `department_type` is preserved as a second column for Task 3's ICU-type × department-type composite.
+
+### ltvv_wrangler.ipynb — final_df cell (id=60) — modified
+**What:** Replaced `icu_type.icu_type` with `icu_type.icu_location_type, icu_type.icu_department_type` in the SELECT.
+
+### ltvv_wrangler.ipynb — table1_data cell (id=92) — modified
+**What:** Replaced `icu_type=('icu_type', ...)` with `icu_location_type=('icu_location_type', ...)`.
+
+### ltvv_wrangler.ipynb — Table 1 definition cell (id=93) — modified
+**What:** Replaced `'icu_type': 'ICU Type, n (%)'` with `'icu_location_type': 'ICU Location Type, n (%)'` in `categorical_vars` and `var_order`.
+
+### ltvv_regression.ipynb — Cell id=9 — modified
+**What:** Replaced `'icu_type'` with `'icu_location_type'` in `factor_vars`. Changed reference level from `icu_type = 'Mixed'` → `icu_location_type = 'general_icu'` (general_icu is 66% of rows, the correct reference category for the raw field).
+
+### ltvv_regression.ipynb — All 8 model cells + vars_all + icu_comp — modified
+**What:** Replaced `"icu_type"` / `'icu_type'` with `"icu_location_type"` / `'icu_location_type'` everywhere. Output filename changed to `ards6_icu_location_type_comparison.html`.
+
+---
+
 ## 2026-06-05 (Task 2 — ICU type mapping updated from discovery query output)
 
 **Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
