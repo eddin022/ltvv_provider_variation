@@ -71,3 +71,109 @@ Output: `raw_vt_df` with columns `hospitalizations_joined_id`, `date`, `tidal_vo
 ### Cell 64 — remove pd.to_datetime() calls, add assertion
 **What:** Removed two `pd.to_datetime()` conversion lines. Added `assert not data.duplicated(...)` after the merge.
 **Why:** `data['date']` and `raw_vt_df['date']` both originate from the same DuckDB DATE column (`datetime64[us]`). Calling `pd.to_datetime()` converts to `datetime64[ns]`. Cell 68's `merge_asof` uses `df['date']` loaded fresh from DuckDB (`datetime64[us]`) — mixed `[us]`/`[ns]` precision causes a pandas 2.x TypeError on the tolerance comparison. Removing the conversion avoids this. The assertion catches any residual duplicate rows from CTE logic errors.
+
+---
+
+## 2026-06-05 (code review fixes)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 1 — Code review bug fixes (pre-rerun)
+
+### ltvv_wrangler.ipynb — Cell 62 — modified
+**What:** Renamed `data['bmi']` to `data['bmi_calc']`.
+**Why:** `ltvv_regression.ipynb` Cell 9 `scale_vars` and Cell 10 `vars_for_impute` both reference `bmi_calc`. The column was named `bmi` in the wrangler, causing `prepare_data()` to stop with "Missing scale vars: bmi_calc" and `data[, vars_for_impute]` to error in R.
+
+### ltvv_wrangler.ipynb — Cell 77 — modified
+**What:** Fixed `ffill` cell to reference `ph` and `pco2` (the actual column names after the SQL alias in Cell 59) instead of `ph_min_arterial_or_venous` and `pco2_min_arterial_or_venous`.
+**Why:** Cell 59 aliases `ph.ph_min_arterial_or_venous AS ph` and `pco2.pco2_min_arterial_or_venous AS pco2`. The pandas DataFrame therefore has columns `ph` and `pco2`. The old code raised KeyError on the groupby column access, meaning the 3-day carry-forward was never applied to pH or pCO2.
+
+### ltvv_wrangler.ipynb — Cell 93 — modified
+**What:** Updated `table1_data` aggregation to use correct column names: `bmi_calc`, `ph`, `pco2` (matching the actual column names in `data`).
+**Why:** References to `bmi`, `ph_min_arterial_or_venous`, `pco2_min_arterial_or_venous` were wrong; the aggregation would silently return NaN for BMI and raise KeyError for pH/pCO2.
+
+### ltvv_wrangler.ipynb — Cell 94 — modified
+**What:** Updated `continuous_vars` dict keys and `var_order` list to use `bmi_calc`, `ph`, `pco2`. Changed cohort labels from `'ARDS cohort'`/`'Non-ARDS cohort'` to `'Persistent AHRF cohort'`/`'Non-AHRF cohort'`.
+**Why:** Column name fixes match Cell 93. Cohort label renamed per locked decision in CLAUDE.md ("persistent AHRF cohort" everywhere).
+
+### ltvv_regression.ipynb — Cell 10 — modified
+**What:** Removed `"charlson"` from `vars_for_impute`.
+**Why:** The wrangler never creates a `charlson` column (only `elix_vw` is produced). `data[, vars_for_impute]` in R would error with column not found.
+
+---
+
+## 2026-06-05 (Task 1 code review — second pass)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 1 — Bug fixes found during focused Task 1 code review
+
+### ltvv_regression.ipynb — Cell 7 — modified
+**What:** Changed `read_parquet('LPV_final_data.parquet')` → `read_parquet('intermediate_outputs/LPV_final_data.parquet')`.
+**Why:** Wrangler saves to `intermediate_outputs/LPV_final_data.parquet` but regression was reading from the root directory — a path mismatch that would cause the R notebook to fail at startup with "file not found."
+
+### ltvv_wrangler.ipynb — Cell id=77 — modified
+**What:** Added `sf_ratio` to the carry-forward block alongside `ph`, `pco2`, and `pf_ratio_paired_min`.
+**Why:** The markdown header for this cell explicitly listed sf_ratio as a variable to carry forward (up to 3 days), but the code omitted it. sf_ratio is an imputation variable in the regression (`vars_for_impute`), so missing values inflate imputation uncertainty unnecessarily.
+
+### ltvv_wrangler.ipynb — Cell id=81 — modified
+**What:** Added `data = data[data['ibw'].notna()]` exclusion with print statement, inside the existing exclusion block.
+**Why:** Patients with no height recorded in the hourly table have NULL IBW in `cohort_meta`. When `tidal_volume_set / ibw` is computed in Cell 75, the result is NaN, and `NaN <= 6` evaluates to False → `ltvv_6 = 0`. These rows survive Cell 82's `tidal_volume_set` NA drop and enter the analysis with a silently incorrect outcome of "non-adherent." Explicitly excluding NULL-IBW rows at the exclusion step prevents this.
+
+### ltvv_wrangler.ipynb — Cell id=10 — modified
+**What:** Changed `vent_episode_duration_hours >= '24'` (string literal) → `>= 24` (numeric literal) in the `cohort_meta` CTE WHERE clause.
+**Why:** `vent_episode_duration_hours` is a numeric column; comparing it to a string literal relies on implicit DuckDB casting and is technically incorrect. Fixed to a proper numeric comparison.
+
+---
+
+## 2026-06-05
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 1 — Full architectural restructuring (raw table as backbone)
+
+### Cell 9 (markdown) — modified
+**What:** Updated header from "Merge hourly vent and hourly provider data" to "Get cohort metadata from hourly table".
+**Why:** Accurately describes the hourly table's new sole role.
+
+### Cell 10 — replaced (`hourly_data` → `cohort_meta`)
+**What:** Replaced `hourly_data` (hourly table backbone) with `cohort_meta` — a hospitalization-level metadata table. Contains: `ibw`, `hospital_id`, `vent_episode_duration_hours`, `ep1_end_local` (naive local timestamp of last hour of episode 1), `mdm_link_id`. The hourly table is now used only as a cohort filter and metadata source.
+**Why:** The hourly table uses LOCF to construct hourly Vt records. Using it as the primary backbone meant the `date`/`recorded_hour` structure was derived from an LOCF table even though Vt was being patched from the raw table. Separating metadata from measurement removes this inconsistency.
+
+### Cell 11 — replaced (raw table as backbone)
+**What:** Completely rewrote `data` construction to use `clif_respiratory_support.parquet` as the primary source. Key logic:
+- `intubation_times`: MIN(recorded_dttm) per hospitalization within episode 1 = intubation proxy
+- `day1_recs`: `QUALIFY ROW_NUMBER() = 1` ordered by `recorded_dttm` after `intubation_dttm + 5h` — selects the full raw record at the correct timepoint; all columns (tidal_volume_set, fio2_set, peep_set, tracheostomy, mode_category) guaranteed from the same charting event
+- `subseq_recs`: `QUALIFY ROW_NUMBER() = 1` per `(hospitalization, local_date)` ordered by `recorded_dttm` after 14:00 local — only dates with actual Vt charting appear
+- `date` and `recorded_hour` derived from `CAST(recorded_dttm AT TIME ZONE timezone AS DATE/INT)` — no LOCF timestamps in the backbone
+- `ep1_end_local + 2h` bounds all raw queries to exclude episode 2+ records
+- Provider joined at `(date, recorded_hour)` derived from raw timestamp
+- Added `recorded_year = YEAR(date)` for regression covariate
+**Why:** Makes the raw table the definitive source for all per-row clinical measurements. The LOCF hourly structure no longer influences date assignment, hour selection, or any column values.
+
+### Cell 8d691c43 — deleted
+**What:** Deleted the separate raw Vt query cell.
+**Why:** Raw Vt ascertainment is now built directly into Cell 11 (`day1_recs`/`subseq_recs`). No separate patch step needed.
+
+### Cells 43, 44 — deleted
+**What:** Deleted the "Get observed tidal volumes" markdown and `tidal_volume_obs` DuckDB view.
+**Why:** `tidal_volume_obs` is now selected directly from the raw representative record in Cell 11. The separate view is no longer needed.
+
+### Cells 63, 64 — deleted
+**What:** Deleted the "Merge raw tidal volume into data" markdown and the drop+merge cell.
+**Why:** `tidal_volume_set` comes directly from Cell 11 now. No patching required.
+
+### Cell 35 — replaced (`vent_daily` from raw table)
+**What:** Rewrote `vent_daily` to read from `resp_supp_path` with `cohort_meta` episode 1 filter. `daily_hours_on_vent` computed as time span of IMV records + 1h buffer (approximation; previously was count of hourly records). FiO2 and PEEP aggregates from raw charting events.
+**Why:** Removes last use of hourly table for data (as opposed to metadata). Episode 2+ records excluded via `ep1_end_local`.
+
+### Cell 42 — replaced (`vent_mode` with episode 1 filter)
+**What:** Updated `vent_mode` to use `resp_supp_path` with `cohort_meta` episode 1 filter and local-timezone date conversion.
+**Why:** Was already using the raw table but lacked episode 1 boundary — could pick up episode 2 mode records. Also aligns date computation with the rest of the notebook.
+
+### New cell (5f07b670) after Cell 51 — inserted (sf_ratio_paired)
+**What:** Added `sf_ratio_paired` view — pairs SpO2 from vitals with FiO2 from raw `resp_supp_path` within a 1-hour window using `merge_asof`, then takes daily min sf_ratio. Computed identically to `pf_ratio_paired`.
+**Why:** `sf_ratio` was previously `spo2 / fio2_set` from a single LOCF hourly row. This replaces it with a properly paired raw value. Both SpO2 and FiO2 timestamps are converted to naive local time before pairing (consistent with pf_ratio approach).
+
+### Cell 59 — updated (`final_df` joins)
+**What:** Added `sf_ratio_paired.sf_ratio` to SELECT and `LEFT JOIN sf_ratio_paired USING (hospitalizations_joined_id, date)` to FROM. Removed implicit `spo2` and `sf_ratio` from `data.*` (they no longer exist in `data`).
+**Why:** `sf_ratio` is now a separate joined view; must be explicitly included.
+
+**Net architectural change:** The hourly `clif_hourly_resp_support.parquet` table is now used only in Cell 10 (`cohort_meta`) for episode filtering and metadata. All per-row clinical measurements, dates, and hours come from `clif_respiratory_support.parquet`.
