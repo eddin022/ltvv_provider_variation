@@ -145,6 +145,34 @@ Output: `raw_vt_df` with columns `hospitalizations_joined_id`, `date`, `tidal_vo
 
 ---
 
+## 2026-06-05 (Task 2 — ICU type mapping updated from discovery query output)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 2 — Fix ICU type CASE mapping after running discovery query
+
+### ltvv_wrangler.ipynb — Cell id=icu_type_view — modified
+**What:** Replaced the generic ILIKE-on-COALESCE CASE with a two-field CASE that checks `department_type` first (for specificity) then `location_type` as a fallback when `department_type = 'icu'` (uninformative). Actual mappings from discovery output:
+
+| location_type | department_type | n | → icu_type |
+|---|---|---|---|
+| general_icu | icu | 134,100 | Mixed (via `location_type = 'general_icu'`) |
+| general_icu | neuro / surgical icu | 22,751 | Neurologic (dept ILIKE '%neuro%') |
+| medical_icu | medical icu | 19,150 | Medical (dept ILIKE '%medical%') |
+| general_icu | neuro icu | 16,194 | Neurologic (dept ILIKE '%neuro%') |
+| mixed_cardiothoracic_icu | cardiac icu | 4,348 | Cardiac (dept ILIKE '%cardiac%') |
+| mixed_neuro_icu | neuro / surgical icu | 3,718 | Neurologic (dept ILIKE '%neuro%') |
+| general_icu | oncology icu | 2,295 | Medical (dept ILIKE '%oncology%') |
+| general_icu | neonatal icu | 522 | Unknown (no match; excluded by age≥18) |
+| cardiac_icu | cardiac icu | 303 | Cardiac (dept ILIKE '%cardiac%') |
+
+Key design decisions: `neuro / surgical icu` → Neurologic (these are neurosurgical units where neurological conditions are primary). `oncology icu` → Medical (closest standard category). 'Surgical' does not appear as a distinct ICU type in this dataset. The original COALESCE(department_type, location_type) approach would have mapped the 134,100 `general_icu / icu` rows to 'Unknown' because `department_type = 'icu'` matches no ILIKE pattern.
+
+### ltvv_regression.ipynb — Cell id=9 — modified
+**What:** Changed `icu_type = 'Medical'` → `icu_type = 'Mixed'` in `reference_levels`.
+**Why:** 'Mixed' (general_icu) is by far the dominant category (134,100 rows, ~66% of total). Using the most frequent category as reference is standard practice and produces more interpretable effect estimates for the less-common ICU types. 'Medical' has only ~19,150 rows (~9%).
+
+---
+
 ## 2026-06-05 (Task 2 code review — third pass)
 
 **Notebooks:** `ltvv_wrangler.ipynb`
