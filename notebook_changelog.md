@@ -101,6 +101,95 @@ Output: `raw_vt_df` with columns `hospitalizations_joined_id`, `date`, `tidal_vo
 
 ---
 
+## 2026-06-05 (Task 2 — ICU type as cluster-level fixed effect)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 2 — Add ICU Type as Cluster-Level Fixed Effect to All Models
+**Reviewer source:** Editor #1, R1 Major #1
+
+### ltvv_wrangler.ipynb — Cell id=7 — modified
+**What:** Added `adt_path = f'{clif_path}/clif_adt.parquet'`.
+**Why:** ADT table is the source for ICU type; path needed for downstream views.
+
+### ltvv_wrangler.ipynb — New cell (icu_disc_md + icu_disc) — inserted after Cell id=7
+**What:** Added a markdown header and a discovery query: `SELECT location_type, department_type, COUNT(*) FROM adt_path WHERE location_category = 'icu' GROUP BY ... ORDER BY n DESC`. Must be run before the icu_type view to confirm CASE ILIKE patterns match actual data values.
+**Why:** The CASE mapping in the icu_type view depends on the actual strings in `department_type`/`location_type`. The discovery query lets you validate and adjust those patterns before committing to the mapping.
+
+### ltvv_wrangler.ipynb — New cell (icu_type_md + icu_type_view) — inserted after Cell id=20 (hospitalization view)
+**What:** Added `icu_type` temp view. Joins the ADT table against the `data` temp table on `recorded_dttm` (exact Vt measurement timestamp) to assign the ICU type at the moment of the clinical decision. Uses `DISTINCT ON (hospitalizations_joined_id, recorded_dttm) ORDER BY in_dttm DESC` to handle the edge case where two ADT intervals overlap the same `recorded_dttm`. CASE maps `COALESCE(department_type, location_type)` to Medical / Surgical / Neurologic / Cardiac / Mixed; unmapped → 'Unknown'.
+**Why:** Joining on `recorded_dttm` (not date) ensures that if a patient moves between ICU types mid-day, each Vt measurement is attributed to the ICU they were actually in at that moment. This is the most defensible approach for the reviewers' ICU-type confounding concern.
+
+### ltvv_wrangler.ipynb — Cell id=58 (final_df) — modified
+**What:** Added `icu_type.icu_type` to the SELECT list and `LEFT JOIN icu_type USING (hospitalizations_joined_id, recorded_dttm)` to the FROM clause.
+**Why:** Propagates ICU type into the final dataset for regression modeling.
+
+### ltvv_wrangler.ipynb — Cell index 94 (table1_data) — modified
+**What:** Added `icu_type=('icu_type', lambda x: x.mode()[0] if not x.mode().empty else None)` to the aggregation. Uses modal ICU type across vent days per hospitalization for Table 1 display.
+**Why:** Task 2 requires ICU type distribution (patient-days and provider counts per ICU type) added to Table 1.
+
+### ltvv_wrangler.ipynb — Cell id=94 (Table 1 definition) — modified
+**What:** Added `'icu_type': 'ICU Type, n (%)'` to `categorical_vars` and `'icu_type'` to `var_order` (after `'sex_category'`).
+**Why:** Table 1 output now includes ICU type distribution stratified by AHRF cohort eligibility.
+
+### ltvv_regression.ipynb — Cell index 9 — modified
+**What:** Added `'icu_type'` to `factor_vars` and `icu_type = 'Medical'` to `reference_levels`.
+**Why:** ICU type must be treated as a factor (not scaled); 'Medical' is the expected reference level (confirm after running discovery query). Adjust if a different category is most common.
+
+### ltvv_regression.ipynb — 8 model cells (ids 20, 32, 34, 45, 57, 70, 81, 92) — modified
+**What:** Added `"icu_type"` to `explanatory_vars` in all model formulas.
+**Why:** Adds ICU type as a cluster-level fixed effect to all three primary models (ards6 overall, day-1, subsequent) and all secondary/sensitivity models (ards8 overall/initial/subsequent, COVID sensitivity, MV8 overall/initial/subsequent).
+
+### ltvv_regression.ipynb — New cells (icu_comp_md + icu_comp) — inserted after ards6 overall summary
+**What:** Added a before/after comparison cell. Fits `ards6_no_icu_model` using the same imputed data and formula but without `icu_type`, then calls `summarize_model()` on both and outputs `ards6_icu_type_comparison.html`.
+**Why:** Task 2 requires reporting provider-level MOR and ICC before and after ICU-type adjustment side-by-side. The adjusted MOR is expected to be ≤ unadjusted MOR since ICU type absorbs structural between-provider variance.
+
+---
+
+## 2026-06-05 (Task 2 code review — third pass)
+
+**Notebooks:** `ltvv_wrangler.ipynb`
+**Task:** TASK 2 — Two additional bugs found in third review pass
+
+### ltvv_wrangler.ipynb — Cell id=91 (Table 1 definition) — modified
+**What:** Added `'icu_type': 'ICU Type, n (%)'` to `categorical_vars` and `'icu_type'` to `var_order` (after `'sex_category'`).
+**Why:** Earlier edits targeted `cell_id='94'` which is a markdown section-header cell, not the Table 1 definition. The actual Table 1 definition is `cell id='91'`. `icu_type` was computed in `table1_data` but silently absent from the output because it was in neither `categorical_vars` nor `var_order`.
+
+### ltvv_wrangler.ipynb — Cell id=47 (fio2_set_df for PF ratio) — modified
+**What:** Changed `AND vent_episode_duration_hours >= '24'` → `AND vent_episode_duration_hours >= 24`.
+**Why:** Same string-comparison bug fixed in `cohort_meta` (Cell id=10) was also present in the FiO2 hourly query used for PF ratio calculation. DuckDB likely auto-casts, but it is technically incorrect.
+
+---
+
+## 2026-06-05 (Task 2 code review — second pass)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 2 — Two additional fixes found during second code review pass
+
+### ltvv_wrangler.ipynb — Cell id=icu_type_view — modified
+**What:** Changed `CREATE OR REPLACE TEMP VIEW icu_type` → `CREATE OR REPLACE TEMP TABLE icu_type`. The COUNT summary query at the end of the cell still runs correctly.
+**Why:** A TEMP VIEW is evaluated lazily each time it is queried. Since `icu_type` is joined in `final_df` (a full-table scan of `data`), a VIEW re-executes the entire range join against `adt_path` on every reference. Materializing as a TEMP TABLE executes the range join once, which is both faster and avoids any dependency issues if `data` were ever modified between the view definition and `final_df` creation.
+
+### ltvv_regression.ipynb — Cell index 19 (vars_all missingness check) — modified
+**What:** Added `"icu_type"` to the `vars_all` vector in the pre-model missingness diagnostic cell.
+**Why:** The cell checks NA counts for all model covariates before fitting. `icu_type` is now a covariate in every model but was absent from `vars_all`, so its missingness rate would not be reported. Since `icu_type` is fully populated by the wrangler (COALESCE → 'Unknown'), the expected NA count is 0 — but the check should confirm this explicitly.
+
+---
+
+## 2026-06-05 (Task 2 code review fixes)
+
+**Notebooks:** `ltvv_wrangler.ipynb`
+**Task:** TASK 2 — Bug fixes found during post-implementation code review
+
+### ltvv_wrangler.ipynb — Cell id=11 — modified
+**What:** Added `r.recorded_dttm` to the explicit SELECT list in the `data` CTE's final SELECT.
+**Why:** The `icu_type` view queries `FROM data d` and joins on `d.recorded_dttm`; the final_df join uses `USING (hospitalizations_joined_id, recorded_dttm)`. Neither works if `recorded_dttm` is absent from the `data` table. The column exists in `reps_with_prov` but was not included in the explicit column list.
+
+### ltvv_wrangler.ipynb — Cell id=icu_type_view — modified
+**What:** Changed `a.icu_type` → `COALESCE(a.icu_type, 'Unknown') AS icu_type` in the outer SELECT of the `icu_type` view.
+**Why:** When the LEFT JOIN finds no ADT interval for a `recorded_dttm` (patient not in any ADT ICU record at that timestamp), `a.icu_type` is NULL. The CASE expression inside the CTE only produces 'Unknown' for ADT rows that exist but match no pattern — not for missing rows. Without COALESCE, NULL propagates to the final dataset and those rows are silently dropped by R's glmer. With COALESCE, they become 'Unknown' and are retained in the model.
+
+---
+
 ## 2026-06-05 (Task 1 code review — second pass)
 
 **Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
