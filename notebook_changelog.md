@@ -145,6 +145,44 @@ Output: `raw_vt_df` with columns `hospitalizations_joined_id`, `date`, `tidal_vo
 
 ---
 
+## 2026-06-08 (Task 8 — Within-Day Tidal Volume Distribution Histogram)
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 8 — Within-Day Tidal Volume Distribution Histogram
+**Reviewer source:** Editor #8, R1 Minor #5
+
+### New cells id=`task8_md` + id=`task8_fig` — inserted after ARDS merge cell (index 87), before Table 1
+
+**What:** Two-panel supplementary figure:
+- **Panel A:** Histogram of within-day coefficient of variation (CV = σ/μ × 100) of Vt/kg IBW across all cohort patient-days with ≥2 raw IMV charting events. Annotated with % of days having CV < 10%. Data: all `tidal_volume_set` records from `resp_supp_path` within episode 1, joined to `cohort_meta` for IBW.
+- **Panel B:** Histogram of the single representative Vt/kg IBW value (from `data['tidal_volume_set_ibw']`) overlaid with 6 mL/kg and 8 mL/kg threshold lines. Shows bimodality of the distribution.
+
+Outputs: `intermediate_outputs/fig_task8_vt_distribution.tiff` (600 dpi) and `.png` (150 dpi). Printed stats: median CV [IQR], median range [IQR], % days with CV < 10%.
+
+**Why:** Editor and reviewer questioned the rationale for a binary outcome. Panel A demonstrates within-day Vt is near-constant (CV ≈ 0 for most days → the ≥5h representative measurement captures full-day practice). Panel B shows bimodality around the 6 mL/kg threshold (most patient-days are clearly adherent or non-adherent → binary classification loses minimal information).
+
+---
+
+## 2026-06-05 (Task 3 — ICU-Type × Department-Type Composite Secondary Analysis)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 3 — Build ICU-Type × Department-Name Composite (Secondary Analysis)
+**Reviewer source:** Editor #1, WHO DOES WHAT summary
+
+### ltvv_wrangler.ipynb — New cell id=`icu_composite` — inserted after BMI cell (id=61)
+**What:** `data['icu_composite'] = data['icu_location_type'] + ' - ' + data['icu_department_type']`. Automatically saved in the final parquet.
+**Why:** Creates the 9-level composite for Task 3. Using the composite directly (not `icu_location_type * icu_department_type`) avoids aliased terms — `icu_composite` subsumes `icu_location_type`, so fitting both as main effects + interaction creates structural zeros.
+
+### ltvv_regression.ipynb — Cell id=`9` — modified
+**What:** Added `'icu_composite'` to `factor_vars` and `icu_composite = 'general_icu - icu'` to `reference_levels`. Reference level = dominant combination (134,100 rows, 66%).
+**Why:** Ensures `icu_composite` is factorized and releveled before any model that uses it is fitted.
+
+### ltvv_regression.ipynb — New cells id=`task3_md` + id=`task3_comp` — inserted after `icu_comp`
+**What:** Task 3 supplement section. Fits `ards6_composite_model` replacing `icu_location_type` with `icu_composite` via `setdiff()`. Prints composite frequency distribution. Compares MOR/ICC via `summarize_model()` + `create_model_summary_html()` → `ards6_task3_composite_comparison.html`.
+**Why:** CLAUDE.md Task 3 requires secondary model with MOR/ICC comparison (location-type-only vs. composite) and frequency distribution of composite categories.
+
+---
+
 ## 2026-06-05 (Task 2 — Replaced derived icu_type with raw location_type + department_type)
 
 **Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
