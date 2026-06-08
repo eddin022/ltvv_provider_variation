@@ -145,6 +145,45 @@ Output: `raw_vt_df` with columns `hospitalizations_joined_id`, `date`, `tidal_vo
 
 ---
 
+## 2026-06-08 (Code review fixes — Task 9 cells)
+
+**Notebooks:** `ltvv_regression.ipynb`, `ltvv_wrangler.ipynb`
+**Task:** Code review follow-up — findings 1 and 5
+
+### ltvv_regression.ipynb — Cell id=`10` — modified
+**What:** Added `data_preimpute <- data` after the imputation variable split, before `mice()` runs.
+**Why:** The complete-case sensitivity analysis (cell `task9_cc`) must identify rows that had no missing values in the *original* data, not in the post-MICE fully-imputed data. Saving `data_preimpute` here gives a reference point before any imputation fills NAs.
+
+### ltvv_regression.ipynb — Cell id=`13` — modified
+**What:** Added `ards_data_preimpute <- data_preimpute %>% dplyr::filter(cohort_eligible == 1L)` after `ards_data` is constructed.
+**Why:** `ards_data` is the ARDS-eligible subset of the imputed data. The corresponding pre-imputation subset (same rows, original NAs intact) is needed so `complete.cases()` in cell `task9_cc` operates on the correct population.
+
+### ltvv_regression.ipynb — Cell id=`task9_cc` — modified
+**What:** Replaced `lapply(ards_data, function(df) { df[complete.cases(df[, model_vars]), ] })` with `complete_rows <- complete.cases(ards_data_preimpute[, model_vars])` followed by `lapply(ards_data, function(df) df[complete_rows, ])`. Updated the row-count `cat()` to use `sum(complete_rows)` and `length(complete_rows)`.
+**Why:** `ards_data` is fully imputed — `complete.cases()` on it returns TRUE for every row, making the CC filter a no-op and producing an identical comparison to the main model. Using `ards_data_preimpute` (pre-MICE NAs intact) correctly identifies which rows were originally complete, then applies that mask to each imputed dataset.
+
+### ltvv_wrangler.ipynb — Cell id=`task9_miss` — modified
+**What:** Replaced `print(f"WARNING: '{col}' not found...")` with `raise ValueError(f"Column '{col}' not found...")`. Simplified the loop body to remove the `None`-handling branches (no longer needed since a missing column now raises immediately).
+**Why:** A renamed upstream column produced a silent blank row in the Excel output with only a print warning. Hard-failing ensures the supplement is never published with a missing variable row.
+
+---
+
+## 2026-06-08 (Task 9 — Missingness Table and Complete-Case Sensitivity)
+
+**Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`
+**Task:** TASK 9 — Missingness Table (All Variables)
+**Reviewer source:** R1 Minor #8
+
+### ltvv_wrangler.ipynb — New cells id=`task9_md` + id=`task9_miss` — inserted after ARDS merge, before Task 8
+**What:** Builds a missingness summary table for all 15 model variables. For each variable: N missing, % missing, and handling method (MICE PMM / complete case / always present). Saves to `intermediate_outputs/etable_task9_missingness.xlsx`. Prints a WARNING if any variable exceeds the 20% threshold.
+**Why:** e-Table required by reviewer R1 Minor #8. Claire references it in Methods. The table uses the final analysis `data` dataframe (after all exclusions, before parquet save) so missingness reflects the actual analysis population.
+
+### ltvv_regression.ipynb — New cells id=`task9_cc_md` + id=`task9_cc` — inserted after `task3_comp`
+**What:** Complete-case sensitivity analysis. Filters each imputed dataset to rows with no NA in any model variable (`complete.cases()`), refits the ards6 overall model, and compares MOR/ICC vs. the main MICE-imputed result via `create_model_summary_html()` → `ards6_task9_complete_case_comparison.html`. Reports % of rows retained.
+**Why:** CLAUDE.md Task 9 requires a complete-case sensitivity analysis if any variable exceeds 20% missingness. This is an addition alongside the main model — it does not replace any existing cell.
+
+---
+
 ## 2026-06-08 (Task 8 — Within-Day Tidal Volume Distribution Histogram)
 
 **Notebook:** `ltvv_wrangler.ipynb`
