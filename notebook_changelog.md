@@ -321,6 +321,25 @@ Key design decisions: `neuro / surgical icu` → Neurologic (these are neurosurg
 
 ---
 
+## 2026-06-09 (Task 14 — Non-VC Mode Exclusion Count)
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 14 — Non-VC Mode Exclusion Count
+**Reviewer source:** R2 Minor #3
+
+### New cells id=`e3f1a981` (markdown) + id=`b312b489` (code) — inserted after Cell id=`11`
+
+**What:** Added a two-query analysis cell that quantifies how many patients (day-1) and patient-days (subsequent-day) were excluded because `tidal_volume_set` was NULL at the measurement window, and breaks down those excluded rows by `mode_category` to separate true non-VC mode exclusions from VC-mode data gaps.
+
+- **Query 1 (summary_14):** For each stratum (day-1, subsequent-day), reports n_total at measurement window, n_included (Vt not NULL), n_excluded (Vt NULL), and % excluded.
+- **Query 2 (mode_14):** Among excluded rows only, groups by `mode_category` and reports n and % of excluded — distinguishing non-VC modes (pressure_control, pressure_support, APRV, etc.) from `volume_control` rows where Vt happened to be NULL (data gap), and from rows with unknown mode.
+
+Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (same intubation proxy, same ≥5h and ≥14:00 windows, same episode 1 boundary) but omit the `tidal_volume_set IS NOT NULL` predicate for the denominator. The `day1_date_anchor` CTE uses the Vt-not-null day-1 record (same as Cell 11) to exclude day-1 date from the subsequent-day denominator.
+
+**Why:** R2 Minor #3 requested the number of patients/patient-days excluded due to non-VC ventilation mode at the measurement window, for the flow diagram and Methods. The existing code uses `tidal_volume_set IS NOT NULL` as a proxy for VC mode without explicitly filtering on `mode_category`. The mode breakdown clarifies what fraction of NULL-Vt exclusions reflect true non-VC mode versus a charting gap in a VC-mode patient.
+
+---
+
 ## 2026-06-05 (Task 1 code review — second pass)
 
 **Notebooks:** `ltvv_wrangler.ipynb`, `ltvv_regression.ipynb`

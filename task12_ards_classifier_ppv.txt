@@ -1,0 +1,102 @@
+TASK 12 — Confirm 66% Validation-Cohort PPV for ARDS Classifier
+Completed: 2026-06-09
+Source: Hochberg CH, Barker AK, Alsagban A, et al. "An Electronic Health Record-Based Classifier
+for Moderate-to-Severe Acute Respiratory Distress Syndrome With Persistent Hypoxemia."
+Crit Care Med. 2026;54(3):654–660. PMID: 41467760.
+
+================================================================================
+CONFIRMED NUMBERS
+================================================================================
+
+Paper:               Hochberg et al., Crit Care Med 2026;54:654-660, PMID 41467760
+Validation cohort N: 90 patients (single academic medical ICU, 2017) [CONFIRMED]
+ARDS prevalence:     53% (48/90) [CONFIRMED — CLAUDE.md estimate of ~50% is correct]
+PPV (validation):    66% (95% CI 50-81%) [CONFIRMED from development cohort figure]
+Sensitivity:         52% (95% CI 38-67%) [from p. 659 and Table 2]
+Specificity:         69% (95% CI 55-82%) [from p. 659 and Table 2]
+
+Raw confusion matrix — validation cohort, primary classifier definition (Table 2):
+
+                   Adjudicated ARDS    Not ARDS    Total
+  Classifier +           25              13          38
+  Classifier -           23              29          52
+  Total                  48              42          90
+
+  PPV  = 25/38 = 65.8% ~ 66%  [matches reported]
+  Se   = 25/48 = 52.1%         [matches reported]
+  Sp   = 29/42 = 69.0%         [matches reported]
+
+Development cohort (for reference only):
+  N = 924, ARDS prevalence 55% (504/924)
+  PPV = 71% (95% CI 67-76%)
+  Se  = 54% (95% CI 50-58%)
+  Sp  = 74% (95% CI 70-78%)
+
+================================================================================
+BAYES' THEOREM — PREVALENCE-ADJUSTED PPV FOR OUR COHORT
+================================================================================
+
+Our cohort ARDS prevalence: P = 2,419 / 19,052 = 12.7%
+
+Formula:
+  PPV_adjusted = (Se x P) / (Se x P + (1 - Sp) x (1 - P))
+
+Inputs:
+  Se = 0.52  (validation cohort)
+  Sp = 0.69  (validation cohort)
+  P  = 0.127 (our cohort)
+
+Calculation:
+  Numerator   = 0.52 x 0.127                     = 0.0660
+  Denominator = 0.52 x 0.127 + 0.31 x 0.873      = 0.0660 + 0.2706 = 0.3366
+  PPV_adj     = 0.0660 / 0.3366                  = 19.6% ~ 20%
+
+Verification at validation-cohort prevalence (53%):
+  (0.52 x 0.53) / (0.52 x 0.53 + 0.31 x 0.47) = 0.2756 / 0.4213 = 65.4% ~ 66% [CHECKS OUT]
+
+IMPORTANT CAVEAT: Hochberg et al. explicitly note that Se and Sp are secondary outcomes
+and likely underestimated, because the clinical adjudication reference did not require
+sustained hypoxemia — some classifier-negative patients may have had true ARDS that
+resolved before the 12-24h persistence window. The paper states: "If true negatives are
+underestimated, as we expect, sensitivity is also likely underestimated." The ~20%
+adjusted PPV is therefore a lower bound; the true value is likely modestly higher.
+
+================================================================================
+THREE DISTINCT VALIDATION FIGURES — DO NOT CONFLATE
+================================================================================
+
+  66% PPV          ARDS classifier performance (Hochberg et al., PMID 41467760,
+                   validation cohort, 90 patients, 53% ARDS prevalence)
+
+  93% agreement    Attending-assignment algorithm accuracy
+                   (chart-review validation; provider-attribution paper — separate citation)
+
+  96% accuracy     Attending-attribution algorithm, recent years
+                   (same provider-attribution paper — cite separately)
+
+================================================================================
+DRAFT LIMITATIONS PARAGRAPH FOR CLAIRE
+================================================================================
+
+The persistent AHRF cohort was identified using an EHR-based classifier validated by
+Hochberg et al. (Crit Care Med 2026;54:654-660). In the independent 90-patient validation
+cohort — drawn from a geographically distinct academic medical ICU with 53% ARDS
+prevalence — the classifier's positive predictive value (PPV) was 66% (95% CI 50-81%).
+However, PPV is prevalence-dependent. The classifier's sensitivity and specificity in the
+validation cohort were 52% (95% CI 38-67%) and 69% (95% CI 55-82%), respectively.
+Applying Bayes' theorem, the expected PPV in our cohort — where the base rate of
+persistent moderate-to-severe ARDS among mechanically ventilated patients is substantially
+lower (~12.7%; 2,419 of 19,052 MV encounters) — is approximately 20%. This means a
+meaningful proportion of patients in the persistent AHRF cohort may not have met full
+Berlin ARDS criteria at the time of their index hypoxemia. Hochberg et al. note that
+classifier sensitivity is likely underestimated because the clinical adjudication reference
+standard did not require sustained hypoxemia; accordingly, the 20% estimate should be
+interpreted as approximate. Critically, misclassification of individual ARDS status does
+not bias the primary analysis, which estimates attending-level variation in tidal-volume
+practice across all patients meeting hypoxemia criteria — a population enriched for but
+not restricted to Berlin-definition ARDS.
+
+The 66% PPV above refers solely to the ARDS classifier performance and should not be
+conflated with two separate validation figures: the 93% agreement reported for the
+attending-assignment algorithm (chart-review validation; [citation]) and the 96%
+recent-year accuracy of that same algorithm ([citation]).
