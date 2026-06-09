@@ -432,3 +432,7 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cell id=98 — modified
 **What:** Replaced the single-cohort patients-per-provider print with a five-row summary table covering Overall, Persistent AHRF, Non-AHRF, Day-1 stratum, and Subsequent-day stratum. Results printed via `display(ppp_df)` for easy review.
 **Why:** Same as above; the day-1 and subsequent-day strata feed into separate regression models and need their own patients-per-provider context.
+
+### Cells id=96 and id=98 — follow-up fixes (code review)
+**What:** (1) Changed `int()` to `round()` in the formatted stat string — `int()` truncates (e.g., 74.5 → 74) rather than rounding. (2) Cell id=98 now calls `_ppp_stat()` (defined in id=96) instead of inlining duplicate logic. (3) Boolean filter changed from `== True` / `== False` to `data['initial_vent_day']` / `~data['initial_vent_day']`.
+**Note:** The new `_ppp_stat(data)` "Overall" value will differ from the previously reported "69 [41–131]" in the manuscript. The old code used `drop_duplicates('hospitalizations_joined_id')` which kept only the day-1 row per encounter (effectively counting day-1 encounters per provider). The new code uses pair dedup `(hospitalizations_joined_id, prov_npi_shifted)` which counts unique patients per provider across all days — a more complete definition. The manuscript value should be updated after the next full rerun.
