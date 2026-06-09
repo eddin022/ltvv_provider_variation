@@ -416,3 +416,19 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 **Why:** `sf_ratio` is now a separate joined view; must be explicitly included.
 
 **Net architectural change:** The hourly `clif_hourly_resp_support.parquet` table is now used only in Cell 10 (`cohort_meta`) for episode filtering and metadata. All per-row clinical measurements, dates, and hours come from `clif_respiratory_support.parquet`.
+
+---
+
+## 2026-06-09
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 15 — Patients-Per-Provider for Sub-Cohorts (Table 1)
+**Reviewer source:** R1 Minor #9
+
+### Cell id=96 — modified
+**What:** Added `_ppp_stat()` helper and patients-per-provider append step after `table1_stratified` is assembled. A new row ("Patients per provider, median [Q1, Q3]") is appended to both `table1` and `table1_stratified` before saving to Excel. Moved `table1.to_excel()` to after the append so the overall patients-per-provider appears in `table1.xlsx`. The stratified Excel gains columns for Overall, Persistent AHRF cohort, and Non-AHRF cohort.
+**Why:** Table 1 currently reported patients-per-provider only for the overall cohort (median 69, IQR 41–131). R1 Minor #9 requests this statistic for each sub-cohort.
+
+### Cell id=98 — modified
+**What:** Replaced the single-cohort patients-per-provider print with a five-row summary table covering Overall, Persistent AHRF, Non-AHRF, Day-1 stratum, and Subsequent-day stratum. Results printed via `display(ppp_df)` for easy review.
+**Why:** Same as above; the day-1 and subsequent-day strata feed into separate regression models and need their own patients-per-provider context.
