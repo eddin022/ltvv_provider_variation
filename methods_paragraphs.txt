@@ -145,3 +145,38 @@ binary indicator was held constant across all patient-ventilator-days within a
 hospitalization and was included as a patient-level covariate in all primary
 mixed-effects logistic regression models to adjust for systematic differences in
 LTVV adherence associated with active SARS-CoV-2 infection.
+
+================================================================================
+Task 20 — Figure 1 Provider Drop-Off Explanation | 2026-06-10
+================================================================================
+
+CONFIRMED NUMBERS (to be filled after running task20_provider_dropoff cell)
+Pre-threshold provider pool (>=1 day-1 episode, non-null NPI): [N_TOTAL — run cell]
+Included (>=25 day-1 episodes): [N_INCLUDED — run cell]
+Excluded (<25 day-1 episodes): [N_EXCLUDED — run cell]
+Excluded providers — median [IQR] day-1 episodes: [MEDIAN — run cell]
+Excluded providers with <5 episodes: [N_LT5] ([PCT_LT5]%)
+
+See intermediate_outputs/task20_provider_dropoff.txt for exact values.
+
+================================================================================
+DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE
+================================================================================
+
+To ensure stable estimation of provider-level random effects, we restricted the
+analysis to attending physicians who were assigned as the attending of record for
+at least 25 invasive mechanical ventilation encounters (day 1) during the study
+period. Of [N_TOTAL] unique providers who supervised at least one eligible
+mechanical ventilation encounter and had a non-null provider identifier,
+[N_INCLUDED] ([PCT_INCLUDED]%) met this threshold and were included in the
+analysis; [N_EXCLUDED] ([PCT_EXCLUDED]%) were excluded. The majority of excluded
+providers had very limited ICU exposure over the 14-year study period: excluded
+providers supervised a median of [MEDIAN_EPS] [IQR_Q1]–[IQR_Q3] day-1 encounters,
+and [PCT_LT5]% of excluded providers supervised fewer than five total mechanical
+ventilation encounters. This pattern is consistent with occasional on-call
+coverage, rotating trainees, or providers whose primary practice was outside the
+ICU setting. Providers with fewer than 25 encounters contribute insufficient data
+for stable random-effect estimation; including them would increase residual
+variance in the provider random intercept without meaningfully improving
+representativeness. This threshold is consistent with prior multilevel analyses of
+provider-level variation in critical care practice.

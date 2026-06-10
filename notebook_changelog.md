@@ -484,3 +484,30 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 1. Added `dplyr::filter(!is.na(ltvv_6))` before `group_by`. Previously `n_days = dplyr::n()` counted all rows including those with `NA` in `ltvv_6`, while `n_adherent` excluded them — deflating `pct_adherent` for providers with missing outcome rows and potentially misclassifying providers as "never adherent."
 2. Replaced `sum(tidal_volume_set_ibw <= 6, na.rm = TRUE)` with `sum(ltvv_6 == "1")`. The model outcome is the pre-computed binary `ltvv_6` column (a factor after `prepare_data()`). Recomputing adherence from the raw Vt field risks divergence if the wrangler applied different NA handling or capping. Using `ltvv_6` directly ensures the statistics match exactly what the model treats as an adherent event.
 **Why:** Bug 1 (denominator mismatch) also created inconsistency with `ltvv6_proportion_plot` — Figure 2's left panel silently drops NA-Vt rows from both numerator and denominator via `cut()` → `group_by`, so the visual and the reported statistics were computed on different denominators. Bug 2 (outcome column divergence) is a correctness concern: Claire's Results text should describe the same adherence events the model fits.
+
+---
+
+## 2026-06-10
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 20 — Figure 1 Provider Drop-Off Explanation
+**Reviewer source:** R3 Minor #11
+**Cells changed:** `task20_provider_dropoff` (added at index 12, after Cell id=11)
+
+**What:** Added a new Python code cell that re-runs the minimal CTE chain from Cell 11 (provider_data → intubation_times → day1_recs → day1_with_hour → day1_with_prov → episode_counts) to compute provider counts before the ≥25 day-1-episode threshold is applied. The cell reports: (1) total providers with ≥1 day-1 encounter and a non-null NPI (pre-threshold pool); (2) providers included (≥25 episodes) and excluded (<25 episodes); (3) median [IQR] day-1 episodes per excluded provider; (4) % of excluded providers contributing <5 episodes; (5) a bucketed frequency table (1, 2–4, 5–9, 10–14, 15–19, 20–24 episodes) for the excluded pool. Results are printed to the notebook and saved to `intermediate_outputs/task20_provider_dropoff.txt`.
+
+**Why:** R3 Minor #11 flagged the ~10:1 provider drop-off in Figure 1 (approximately 1,900 → 180 providers) as alarming. The exact pre/post counts and the episode distribution of excluded providers demonstrate that the ≥25 threshold removes providers with insufficient data for stable random-effect estimation (consistent with standard multilevel-analysis practice), not a systematically different subgroup. Claire will incorporate the numbers in Methods.
+
+---
+
+## 2026-06-10 (code review fixes)
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 20 — Figure 1 Provider Drop-Off Explanation (code review)
+**Cells changed:** `task20_provider_dropoff` (modified)
+
+**What:** Three fixes applied during code review:
+1. Materialized the shared CTE chain into `CREATE OR REPLACE TEMP TABLE task20_episode_counts` so both the summary-stats query and the bucket-frequency query read from it, eliminating the duplication of the 5-CTE chain.
+2. Removed redundant `AND n_episodes < 25` conditions from `n_excluded_lt5` and `pct_excluded_lt5` expressions — `n_episodes < 5` already implies `< 25`.
+3. Removed a redundant `import os` (already imported in Cell 3).
+**Why:** Duplication of the CTE chain was a maintenance hazard — a filter change in one copy would silently diverge from the other. The redundant condition was misleading without being harmful.
