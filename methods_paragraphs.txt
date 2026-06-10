@@ -100,3 +100,48 @@ The 66% PPV above refers solely to the ARDS classifier performance and should no
 conflated with two separate validation figures: the 93% agreement reported for the
 attending-assignment algorithm (chart-review validation; [citation]) and the 96%
 recent-year accuracy of that same algorithm ([citation]).
+
+================================================================================
+TASK 19 — COVID Variable Coding Confirmation
+Completed: 2026-06-10
+================================================================================
+
+VARIABLE DEFINITION
+COVID-19 status is a binary (TRUE/FALSE) indicator at the hospitalization level.
+Source: microbiology_nonculture table; organism_category ILIKE '%sars%'
+        AND result_category = 'detected' (positive test only).
+Code: ltvv_wrangler.ipynb, Cell 46.
+
+ASSIGNMENT WINDOW
+A hospitalization is COVID-positive if a positive SARS-CoV-2 test was recorded
+within 14 days before or on the date of first intubation (pd.merge_asof,
+direction='backward', tolerance=14 days).
+Code: ltvv_wrangler.ipynb, Cell 68.
+
+MISSINGNESS HANDLING
+All NaN values (no test found within window) are filled with FALSE (Cell 74).
+Conservative assumption: absence of a positive test = COVID-negative.
+
+REFERENCE CATEGORY
+FALSE (COVID-negative). R default factor ordering: FALSE precedes TRUE.
+Regression output label: covidTRUE, displayed as "SARS-CoV-2" in tables.
+
+MODEL PLACEMENT
+Patient-level covariate, constant within a hospitalization, included in all
+three primary mixed-effects logistic regression models (overall, day-1,
+subsequent-day).
+
+================================================================================
+DRAFT METHODS PARAGRAPH FOR CLAIRE
+================================================================================
+
+COVID-19 status was defined as a binary indicator at the hospitalization level.
+A hospitalization was classified as COVID-19–positive if a positive SARS-CoV-2
+nucleic acid amplification or antigen test was recorded in the microbiology
+record within 14 days before or on the date of first intubation for that
+encounter. All hospitalizations without a matching positive test result within
+this window were classified as COVID-19–negative (reference category). This
+binary indicator was held constant across all patient-ventilator-days within a
+hospitalization and was included as a patient-level covariate in all primary
+mixed-effects logistic regression models to adjust for systematic differences in
+LTVV adherence associated with active SARS-CoV-2 infection.

@@ -451,6 +451,18 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 
 ---
 
+## 2026-06-10 (Global ARDS → AHRF rename)
+
+**Notebooks:** `ltvv_regression.ipynb`, `ltvv_wrangler.ipynb`, `vent_ebp_wrangler.ipynb`
+**Task:** CLAUDE.md locked decision — cohort name is "persistent AHRF cohort" everywhere
+
+### All three notebooks — source cells modified
+**What:** Replaced every occurrence of `ARDS` → `AHRF` and `ards` → `ahrf` across all cell source in all three notebooks (53 cells in regression, 7 in wrangler, 4 in vent_ebp_wrangler). Covers: R variable names (`ahrf_data`, `ahrf6_model`, `ahrf_classifier_cohort`, etc.), Python variable names (`ahrf_eligible`, `ahrf_data`, etc.), string literals in titles and messages ("AHRF-6 Model", "AHRF-8 Model", etc.), markdown headers, output filenames, and comments.
+**Why:** CLAUDE.md locked decision: cohort is "persistent AHRF cohort" (formerly "ARDS cohort"). Renamed throughout to eliminate the old label.
+**External dependency:** `ahrf_classifier_cohort.csv` is read from disk in `ltvv_wrangler.ipynb` and `vent_ebp_wrangler.ipynb`. The file is produced by `ards_classifier.R` / `run_ards.bat`, which were not modified here. The CSV file on disk (and the R script that generates it) must be updated before re-running.
+
+---
+
 ## 2026-06-10 (Task 17 code review fixes)
 
 **Notebook:** `ltvv_regression.ipynb`
