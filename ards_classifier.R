@@ -58,7 +58,9 @@ append_status <- function(script_name, step, extra = list()) {
 script_name <- "ards_classifier"
 append_status(script_name, "start")
 
-cfg <- fromJSON("config.json")
+txt <- readLines("config.json", encoding = "UTF-8")
+txt[1] <- sub("^﻿", "", txt[1])
+cfg <- fromJSON(paste(txt, collapse = "\n"))
 
 tables_location <- cfg$paths$clif
 data_path <- "all_hosp_ids_on_vent.parquet"
@@ -82,8 +84,8 @@ prefix <- Sys.getenv("CONDA_PREFIX")
 # If CONDA_PREFIX is missing (common in some RStudio/Jupyter launches),
 # infer the conda env root from where R.exe lives.
 if (!nzchar(prefix)) {
-  # On conda Windows builds, R is typically at <env>/Library/bin/R.exe
-  prefix <- normalizePath(file.path(dirname(Sys.which("R")), "..", ".."))
+  # On conda Windows builds, R.exe is at <env>\lib\R\bin\x64\R.exe — go up 4 levels
+  prefix <- normalizePath(file.path(dirname(Sys.which("R")), "..", "..", "..", ".."))
 }
 
 tzdir <- file.path(prefix, "share", "zoneinfo")

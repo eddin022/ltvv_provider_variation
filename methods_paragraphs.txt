@@ -188,38 +188,54 @@ threshold is consistent with prior multilevel analyses of provider-level variati
 in critical care practice.
 
 ================================================================================
-TASK 22 — IBW Missingness Audit and Recovery
+TASK 21 — ECMO Exclusion Clarification
 Completed: 2026-06-10
-Source: Internal code review (2026-06-05)
+Source: Code review of ltvv_wrangler.ipynb (cells 24, 60, 80) and ards_classifier.R (lines 1282–1701)
 ================================================================================
 
-CONFIRMED APPROACH
-================================================================================
-IBW source: pre-computed in clif_hourly_resp_support.parquet (upstream pipeline).
-Recovery formula: Devine formula applied when ibw is NULL but height_cm
-  (within 76.2–244 cm) and sex_category (Male or Female) are available.
-  Males:   IBW = max(50, 50 + 2.3 × (height_cm / 2.54 − 60)) kg
-  Females: IBW = max(45.5, 45.5 + 2.3 × (height_cm / 2.54 − 60)) kg
-Unrecoverable exclusions: rows where ibw remains NULL after recovery (no
-  height_cm available, out-of-range height, or sex not recorded as Male/Female).
-Audit output: counts and hospital/year breakdown are printed at run time
-  in cells task22_ibw_audit and task22_ibw_recovery of ltvv_wrangler.ipynb.
-[PENDING — fill in n_null_before, n_recovered, n_still_null after notebook run]
-
-================================================================================
-DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE
+CONFIRMED EXCLUSION LOGIC
 ================================================================================
 
-Predicted body weight (PBW, used interchangeably with ideal body weight [IBW])
-was obtained from the pre-computed hourly respiratory support table for each
-hospitalization. For encounters in which PBW was absent from the upstream table,
-we attempted recovery using the Devine formula applied to recorded height and
-biological sex: PBW (kg) = 50 + 2.3 × (height in inches − 60) for males and
-45.5 + 2.3 × (height in inches − 60) for females, with a minimum of 50 kg and
-45.5 kg respectively. Height values outside the plausible range of 76.2–244 cm
-were excluded from the recovery attempt. Encounters for which PBW could not be
-derived from either source were excluded from analysis, as the primary adherence
-outcome (tidal volume ≤ 6 mL/kg PBW) cannot be ascertained without a valid
-body-weight reference. [Fill in: N encounters excluded for unrecoverable NULL
-PBW after recovery attempt, and the hospital/year distribution from the audit
-output, to allow assessment of potential selection bias.]
+Two ECMO exclusions are applied at different pipeline stages:
+
+STAGE 1 — Encounter-level (ards_classifier.R, lines 1698–1700):
+  Rule: ecmo_exclusion = 1 if ecmo_start <= t_enrollment
+    where t_enrollment = time patient first met AHRF criteria
+    (= min of second PROSEVA-qualifying timepoint and first proning time)
+  Effect: entire encounter excluded from the AHRF cohort.
+  Scale: <1% of hospitalizations — operationally negligible.
+  N encounters excluded = [fill in from ards_classifier.R tab output, line 1727]
+
+STAGE 2 — Patient-day-level (ltvv_wrangler.ipynb, cell 80):
+  Rule: drop any row where ecmo == True (calendar day has ECMO activity)
+  Source: clif_ecmo_mcs.parquet filtered to mcs_group = 'ecmo', grouped to date level (cell 24)
+  Effect: individual patient-ventilator-days removed; encounter remains in cohort.
+  Scale: operationally meaningful exclusion — the primary exclusion for Figure 1.
+  N patient-days excluded = 3,300 (101,697 → 98,397; AHRF cohort, cell 80 output 2026-06-10)
+  N unique encounters affected = 704
+
+ANSWER TO REVIEWER'S QUESTION (R3 Minor #12):
+  The correct exclusion is at the PATIENT-DAY level (Stage 2).
+  Figure 1 and its caption should both read: patient-days on ECMO excluded (n = Y).
+  Stage 1 encounter-level exclusion is negligible (<1%) and does not need its own
+  flow-diagram box; it may be noted briefly in Methods.
+
+Figure 1 flow diagram box — corrected language:
+  "Excluded: patient-days during which ECMO was active (n = 3,300 patient-days)"
+
+================================================================================
+DRAFT METHODS PARAGRAPH FOR CLAIRE
+================================================================================
+
+Patient-ventilator-days during which extracorporeal membrane oxygenation (ECMO)
+was active were excluded from the analytic dataset, as tidal-volume targets are
+not clinically applicable during ECMO support. ECMO activity was identified from
+the clif_ecmo_mcs table (mcs_group = 'ecmo') and flagged at the calendar-date
+level; any patient-day on which ECMO was recorded was removed from the primary
+analytic file. This exclusion affected 3,300 patient-days (3.2% of the 101,697 pre-exclusion
+patient-day total in the persistent AHRF cohort) across 704 unique hospitalizations. Encounters in which ECMO
+was initiated at or before the time a patient first met persistent AHRF enrollment
+criteria were additionally excluded at the cohort-eligibility stage (n = [fill in
+from ards_classifier.R]; <1% of hospitalizations); these encounters never entered
+the analytic dataset.
+
