@@ -436,3 +436,28 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cells id=96 and id=98 — follow-up fixes (code review)
 **What:** (1) Changed `int()` to `round()` in the formatted stat string — `int()` truncates (e.g., 74.5 → 74) rather than rounding. (2) Cell id=98 now calls `_ppp_stat()` (defined in id=96) instead of inlining duplicate logic. (3) Boolean filter changed from `== True` / `== False` to `data['initial_vent_day']` / `~data['initial_vent_day']`.
 **Note:** The new `_ppp_stat(data)` "Overall" value will differ from the previously reported "69 [41–131]" in the manuscript. The old code used `drop_duplicates('hospitalizations_joined_id')` which kept only the day-1 row per encounter (effectively counting day-1 encounters per provider). The new code uses pair dedup `(hospitalizations_joined_id, prov_npi_shifted)` which counts unique patients per provider across all days — a more complete definition. The manuscript value should be updated after the next full rerun.
+
+---
+
+## 2026-06-10
+
+**Notebook:** `ltvv_regression.ipynb`
+**Task:** TASK 17 — Figure 2 Exact Statistics
+**Reviewer source:** R1 Minor #11
+
+### New cell id=task17_fig2_stats — inserted after cell id=28 (Figure 2 generation)
+**What:** Added a new R code cell that computes per-provider LTVV-6 adherence rates directly from `ards6_data[[1]]` (the same first-imputed AHRF dataset used to generate Figure 2). Groups by `prov_npi_shifted`, computes `pct_adherent = n_adherent / n_days * 100` where adherence is `tidal_volume_set_ibw <= 6`, then prints exact counts for (1) providers with 0% adherence ("never adherent") and (2) providers with >50% adherence.
+**Why:** R1 Minor #11 flagged that the manuscript text cited visual estimates from Figure 2 rather than exact numerator/denominator counts. The reviewer noted these are "striking statistics" requiring exact reporting (e.g., "X of Y providers [Z.Z%] had zero LTVV-adherent patient-days").
+
+---
+
+## 2026-06-10 (Task 17 code review fixes)
+
+**Notebook:** `ltvv_regression.ipynb`
+**Task:** TASK 17 — Figure 2 Exact Statistics (code review bug fixes)
+
+### Cell id=task17_fig2_stats — modified [SUPERSEDES entry 2026-06-10 above]
+**What:** Two bugs fixed in the provider-level summary:
+1. Added `dplyr::filter(!is.na(ltvv_6))` before `group_by`. Previously `n_days = dplyr::n()` counted all rows including those with `NA` in `ltvv_6`, while `n_adherent` excluded them — deflating `pct_adherent` for providers with missing outcome rows and potentially misclassifying providers as "never adherent."
+2. Replaced `sum(tidal_volume_set_ibw <= 6, na.rm = TRUE)` with `sum(ltvv_6 == "1")`. The model outcome is the pre-computed binary `ltvv_6` column (a factor after `prepare_data()`). Recomputing adherence from the raw Vt field risks divergence if the wrangler applied different NA handling or capping. Using `ltvv_6` directly ensures the statistics match exactly what the model treats as an adherent event.
+**Why:** Bug 1 (denominator mismatch) also created inconsistency with `ltvv6_proportion_plot` — Figure 2's left panel silently drops NA-Vt rows from both numerator and denominator via `cut()` → `group_by`, so the visual and the reported statistics were computed on different denominators. Bug 2 (outcome column divergence) is a correctness concern: Claire's Results text should describe the same adherence events the model fits.
