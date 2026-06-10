@@ -456,6 +456,17 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 **Notebook:** `ltvv_regression.ipynb`
 **Task:** TASK 17 — Figure 2 Exact Statistics (code review bug fixes)
 
+### New cells id=figures_dir_md + id=figures_dir_setup — inserted at index 2 (after library imports)
+**What:** Added a markdown header "Output Directory" and a two-line code cell: `figures_dir <- "Figures"` and `dir.create(figures_dir, showWarnings = FALSE)`. Updated every `ggsave()`, `output_file =`, and `filename =` argument across all 32 save calls in the notebook to use `file.path(figures_dir, "...")` instead of bare filenames. The function definition defaults in the `create_forest_plot`, `create_fe_table`, and `create_model_summary_html` helper functions were left unchanged.
+**Why:** All figures and HTML tables were being written to the working directory root, making outputs hard to find and mixing them with code. Centralising to a `Figures/` subdirectory keeps the project tree clean and makes it easy to zip/share outputs.
+
+---
+
+## 2026-06-10 (Task 17 code review fixes)
+
+**Notebook:** `ltvv_regression.ipynb`
+**Task:** TASK 17 — Figure 2 Exact Statistics (code review bug fixes)
+
 ### Cell id=task17_fig2_stats — modified [SUPERSEDES entry 2026-06-10 above]
 **What:** Two bugs fixed in the provider-level summary:
 1. Added `dplyr::filter(!is.na(ltvv_6))` before `group_by`. Previously `n_days = dplyr::n()` counted all rows including those with `NA` in `ltvv_6`, while `n_adherent` excluded them — deflating `pct_adherent` for providers with missing outcome rows and potentially misclassifying providers as "never adherent."
