@@ -511,3 +511,36 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 2. Removed redundant `AND n_episodes < 25` conditions from `n_excluded_lt5` and `pct_excluded_lt5` expressions — `n_episodes < 5` already implies `< 25`.
 3. Removed a redundant `import os` (already imported in Cell 3).
 **Why:** Duplication of the CTE chain was a maintenance hazard — a filter change in one copy would silently diverge from the other. The redundant condition was misleading without being harmful.
+
+---
+
+## 2026-06-10
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 22 — IBW Missingness Audit and Recovery
+**Reviewer source:** Internal code review (2026-06-05) — NULL IBW causes silent ltvv_6 = 0 errors
+
+### New cell `task22_ibw_audit` — inserted after cell id=62 (ICU composite), before BMI section
+**What:** Added an audit cell that, before any recovery attempt, reports (a) total patient-days and unique hospitalizations with NULL `ibw`, (b) breakdown by `hospital_id`, and (c) breakdown by calendar year derived from the `date` column.
+**Why:** Characterizes the distribution of NULL IBW to determine whether exclusions are non-random (e.g., concentrated in early years or specific hospitals), which would indicate selection bias.
+
+### New cell `task22_ibw_recovery` — inserted immediately after `task22_ibw_audit`
+**What:** For rows where `ibw` is NULL but `height_cm` is available within the plausible range (76.2–244 cm, matching ards_classifier.R bounds) and `sex_category` is Male or Female, derives IBW using the Devine formula: Males = max(50, 50 + 2.3 × (height_cm/2.54 − 60)) kg; Females = max(45.5, 45.5 + 2.3 × (height_cm/2.54 − 60)) kg. Prints counts before recovery, number recovered, and number still NULL.
+**Why:** Patients dropped for NULL IBW in the upstream `clif_hourly_resp_support` table are silently excluded. Recovery from raw vitals-derived height reduces this selection bias. Both `height_cm` and `sex_category` are already in `data` after cell id=61 (final merge), making this feasible without additional data joins.
+
+### Cell id=81 — comment updated
+**What:** Updated the IBW filter comment from "Require non-null IBW (needed for Vt/kg outcome)" to "Require non-null IBW; recovery from height_cm was attempted above (Task 22)". Updated print label from `'IBW not null'` to `'IBW not null (post-recovery)'`.
+**Why:** Clarifies that the filter now excludes only truly unrecoverable patients (no height_cm or out-of-range/unknown sex), not all NULL-IBW patients.
+
+### 2026-06-10 (amendment — bug fixes from code review)
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Task:** TASK 22 — IBW Missingness Audit and Recovery (code-review fixes)
+
+#### Cell `task22_ibw_audit` — updated
+**What:** Added `errors='coerce'` to `pd.to_datetime()` call in year-breakdown query. Added comment noting the audit includes `hospital_id == 'delete'` hospitals that are later excluded at cell 81.
+**Why:** `errors='coerce'` prevents silent failure on malformed date strings. Comment prevents misreading the audit totals as analysis-sample missingness.
+
+#### Cell `task22_ibw_recovery` — updated
+**What:** (1) Added `data['ibw'] = data['ibw'].astype(float)` before any `.loc` assignment to guard against `int64` dtype from DuckDB. (2) Added `n_hosp_before` snapshot (unique hospitalizations with NULL ibw) before the fills, using `.loc[ibw.isna()].nunique()`. (3) Added `n_hosp_after` and `n_hosp_recovered` (unique hospitalizations) after the fills using `recovery_mask`. (4) Updated print statements to report both patient-day and hospitalization counts side-by-side. (5) Added comment explaining that `height_cm` is patient-level (pooled via `mdm_link_id`) — benign for adults.
+**Why:** The original cell reported only row (patient-day) counts, mismatching the CLAUDE.md spec ("n hospitalizations") and the audit cell's hospitalization-level reporting. IBW is hospitalization-level so patient-day counts inflate the "n recovered" figure by average ventilator duration.

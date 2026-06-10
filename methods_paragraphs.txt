@@ -150,14 +150,20 @@ LTVV adherence associated with active SARS-CoV-2 infection.
 Task 20 — Figure 1 Provider Drop-Off Explanation | 2026-06-10
 ================================================================================
 
-CONFIRMED NUMBERS (to be filled after running task20_provider_dropoff cell)
-Pre-threshold provider pool (>=1 day-1 episode, non-null NPI): [N_TOTAL — run cell]
-Included (>=25 day-1 episodes): [N_INCLUDED — run cell]
-Excluded (<25 day-1 episodes): [N_EXCLUDED — run cell]
-Excluded providers — median [IQR] day-1 episodes: [MEDIAN — run cell]
-Excluded providers with <5 episodes: [N_LT5] ([PCT_LT5]%)
+CONFIRMED NUMBERS
+Pre-threshold provider pool (>=1 day-1 episode, non-null NPI): 1,580
+Included (>=25 day-1 episodes):                                  176 (11.1%)
+Excluded (<25 day-1 episodes):                                 1,404 (88.9%)
+Excluded providers — median [IQR] day-1 episodes:             2 [IQR 1–4]
+Excluded providers with <5 episodes:                       1,130 (80.5%)
 
-See intermediate_outputs/task20_provider_dropoff.txt for exact values.
+Episode bucket distribution (excluded providers):
+       1 episode:   697 providers (49.6%)
+     2–4 episodes:  433 providers (30.8%)
+     5–9 episodes:  168 providers (12.0%)
+   10–14 episodes:   54 providers  (3.8%)
+   15–19 episodes:   33 providers  (2.4%)
+   20–24 episodes:   19 providers  (1.4%)
 
 ================================================================================
 DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE
@@ -166,17 +172,54 @@ DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE
 To ensure stable estimation of provider-level random effects, we restricted the
 analysis to attending physicians who were assigned as the attending of record for
 at least 25 invasive mechanical ventilation encounters (day 1) during the study
-period. Of [N_TOTAL] unique providers who supervised at least one eligible
-mechanical ventilation encounter and had a non-null provider identifier,
-[N_INCLUDED] ([PCT_INCLUDED]%) met this threshold and were included in the
-analysis; [N_EXCLUDED] ([PCT_EXCLUDED]%) were excluded. The majority of excluded
-providers had very limited ICU exposure over the 14-year study period: excluded
-providers supervised a median of [MEDIAN_EPS] [IQR_Q1]–[IQR_Q3] day-1 encounters,
-and [PCT_LT5]% of excluded providers supervised fewer than five total mechanical
-ventilation encounters. This pattern is consistent with occasional on-call
-coverage, rotating trainees, or providers whose primary practice was outside the
-ICU setting. Providers with fewer than 25 encounters contribute insufficient data
-for stable random-effect estimation; including them would increase residual
-variance in the provider random intercept without meaningfully improving
-representativeness. This threshold is consistent with prior multilevel analyses of
-provider-level variation in critical care practice.
+period. Of 1,580 unique providers who supervised at least one qualifying
+mechanical ventilation encounter with a non-null provider identifier, 176 (11.1%)
+met this threshold and were included in the analysis; 1,404 (88.9%) were
+excluded. The majority of excluded providers had very limited ICU exposure over
+the 14-year study period: excluded providers supervised a median of 2 [IQR 1–4]
+day-1 encounters, and 80.5% supervised fewer than five total mechanical
+ventilation encounters. Nearly half (49.6%) supervised only a single encounter.
+This pattern is consistent with occasional on-call coverage, rotating trainees,
+or providers whose primary clinical practice was outside the ICU setting.
+Providers with fewer than 25 encounters contribute insufficient data for stable
+random-effect estimation; including them would increase residual variance in the
+provider random intercept without meaningfully improving representativeness. This
+threshold is consistent with prior multilevel analyses of provider-level variation
+in critical care practice.
+
+================================================================================
+TASK 22 — IBW Missingness Audit and Recovery
+Completed: 2026-06-10
+Source: Internal code review (2026-06-05)
+================================================================================
+
+CONFIRMED APPROACH
+================================================================================
+IBW source: pre-computed in clif_hourly_resp_support.parquet (upstream pipeline).
+Recovery formula: Devine formula applied when ibw is NULL but height_cm
+  (within 76.2–244 cm) and sex_category (Male or Female) are available.
+  Males:   IBW = max(50, 50 + 2.3 × (height_cm / 2.54 − 60)) kg
+  Females: IBW = max(45.5, 45.5 + 2.3 × (height_cm / 2.54 − 60)) kg
+Unrecoverable exclusions: rows where ibw remains NULL after recovery (no
+  height_cm available, out-of-range height, or sex not recorded as Male/Female).
+Audit output: counts and hospital/year breakdown are printed at run time
+  in cells task22_ibw_audit and task22_ibw_recovery of ltvv_wrangler.ipynb.
+[PENDING — fill in n_null_before, n_recovered, n_still_null after notebook run]
+
+================================================================================
+DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE
+================================================================================
+
+Predicted body weight (PBW, used interchangeably with ideal body weight [IBW])
+was obtained from the pre-computed hourly respiratory support table for each
+hospitalization. For encounters in which PBW was absent from the upstream table,
+we attempted recovery using the Devine formula applied to recorded height and
+biological sex: PBW (kg) = 50 + 2.3 × (height in inches − 60) for males and
+45.5 + 2.3 × (height in inches − 60) for females, with a minimum of 50 kg and
+45.5 kg respectively. Height values outside the plausible range of 76.2–244 cm
+were excluded from the recovery attempt. Encounters for which PBW could not be
+derived from either source were excluded from analysis, as the primary adherence
+outcome (tidal volume ≤ 6 mL/kg PBW) cannot be ascertained without a valid
+body-weight reference. [Fill in: N encounters excluded for unrecoverable NULL
+PBW after recovery attempt, and the hospital/year distribution from the audit
+output, to allow assessment of potential selection bias.]
