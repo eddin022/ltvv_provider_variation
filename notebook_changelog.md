@@ -544,3 +544,19 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 #### Cell `task22_ibw_recovery` — updated
 **What:** (1) Added `data['ibw'] = data['ibw'].astype(float)` before any `.loc` assignment to guard against `int64` dtype from DuckDB. (2) Added `n_hosp_before` snapshot (unique hospitalizations with NULL ibw) before the fills, using `.loc[ibw.isna()].nunique()`. (3) Added `n_hosp_after` and `n_hosp_recovered` (unique hospitalizations) after the fills using `recovery_mask`. (4) Updated print statements to report both patient-day and hospitalization counts side-by-side. (5) Added comment explaining that `height_cm` is patient-level (pooled via `mdm_link_id`) — benign for adults.
 **Why:** The original cell reported only row (patient-day) counts, mismatching the CLAUDE.md spec ("n hospitalizations") and the audit cell's hospitalization-level reporting. IBW is hospitalization-level so patient-day counts inflate the "n recovered" figure by average ventilator duration.
+
+---
+
+### 2026-06-11 — Task 4: TeleICU-Excluded Sensitivity Analysis
+
+**Notebook:** `ltvv_regression.ipynb`
+**Cells added:** `task4_md` (markdown), `task4_notele` (code) — inserted after `task9_cc`, before cell `30`
+**Task:** Task 4 — TeleICU-Excluded Sensitivity Analysis
+
+#### Cell `task4_md` — added
+**What:** Markdown header introducing the TeleICU-excluded sensitivity section.
+**Why:** Section label for supplement; mirrors structure of other sensitivity sections.
+
+#### Cell `task4_notele` — added
+**What:** Filters hospitals 6, 7, and 8 from each of the 5 MICE-imputed AHRF datasets (overall, day-1, subsequent) using `droplevels()` to remove empty factor levels. Re-fits all three primary AHRF-6 mixed-effects logistic regression models on the restricted cohort. Calls `summarize_model` for each (primary and no-TeleICU) and outputs a side-by-side HTML comparison via `create_model_summary_html` to `Figures/ahrf6_notele_sensitivity.html`.
+**Why:** R3 Major #1 — TeleICU coverage (hospitals 6, 7, 8) complicates attribution of ventilator decisions to the attending of record. Sensitivity tests whether primary MOR/ICC findings are driven by tele hospitals. `droplevels()` is required to prevent empty fixed-effect cells for the excluded hospitals in `glmer`.
