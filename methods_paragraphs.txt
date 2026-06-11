@@ -204,7 +204,7 @@ STAGE 1 — Encounter-level (ards_classifier.R, lines 1698–1700):
     (= min of second PROSEVA-qualifying timepoint and first proning time)
   Effect: entire encounter excluded from the AHRF cohort.
   Scale: <1% of hospitalizations — operationally negligible.
-  N encounters excluded = [fill in from ards_classifier.R tab output, line 1727]
+  N encounters excluded = 294 (of 54,159 reviewed = 0.54%; ards_classifier.R tab output 2026-06-11)
 
 STAGE 2 — Patient-day-level (ltvv_wrangler.ipynb, cell 80):
   Rule: drop any row where ecmo == True (calendar day has ECMO activity)
@@ -235,7 +235,6 @@ level; any patient-day on which ECMO was recorded was removed from the primary
 analytic file. This exclusion affected 3,300 patient-days (3.2% of the 101,697 pre-exclusion
 patient-day total in the persistent AHRF cohort) across 704 unique hospitalizations. Encounters in which ECMO
 was initiated at or before the time a patient first met persistent AHRF enrollment
-criteria were additionally excluded at the cohort-eligibility stage (n = [fill in
-from ards_classifier.R]; <1% of hospitalizations); these encounters never entered
-the analytic dataset.
+criteria were additionally excluded at the cohort-eligibility stage (n = 294 encounters,
+0.54% of 54,159 reviewed); these encounters never entered the analytic dataset.
 
