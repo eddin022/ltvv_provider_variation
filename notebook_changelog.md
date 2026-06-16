@@ -570,3 +570,39 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 #### Cell id=103 — modified
 **What:** Updated model label strings in the three primary `summarize_model()` calls: `'ahrf-6 Overall'` → `'Overall'`, `'ahrf-6 Initial'` → `'Day 1'`, `'ahrf-6 Subsequent'` → `'Subsequent Days'`.
 **Why:** Task 6 (Editor #5, R1 Minor #10) — Table 2 must have clear header labels matching the three-model structure. Labels for ahrf-8 and MV-8 models are unchanged.
+
+---
+
+## 2026-06-16 (W1 — Carry-forward reduction; W2 — ICU type 5-category; W3 — outside transfer count)
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Tasks:** TASK 9 (carry-forward), TASK 2/3 (ICU type mapping), TASK 11 (outside transfers)
+**Reviewer source:** Meeting 2026-06-12 (Nick and Claire)
+
+### W1 — Cell id=82 (markdown) — modified
+**What:** Updated header from "3-day max" to "1-day max (per meeting 2026-06-12)" for all four carry-forward variables.
+**Why:** Documents the scope change from 3-day to 1-day carry-forward decided at the June 12 meeting.
+
+### W1 — Cell id=82 (code, carry-forward block) — replaced
+**What:** Rewrote the carry-forward cell to: (1) capture `data_pre_fill` snapshot before any ffill; (2) apply `ffill(limit=1)` to all four variables (`ph`, `pco2`, `sf_ratio`, `pf_ratio_paired_min`) — reduced from limit=3; (3) compute a separate `data_3day` reference-only copy; (4) print a three-column comparison table (no carry-forward / 1-day / 3-day missingness counts and %) for Nick to review.
+**Why:** Meeting decision: 3-day carry-forward was deemed too permissive for pH and pCO2; team agreed to 1-day for all four variables. The comparison printout satisfies the `%%` note "carry forward one day (and don't carry forward!!) and then look at numbers again!!"
+
+### W1 — Cell id=94 (missingness table) — modified
+**What:** Updated handling method strings for `ph`, `pco2`, and `sf_ratio` from `"MICE PMM; 3-day carry-forward"` to `"MICE PMM; 1-day carry-forward"`. Replaced `icu_location_type` key/label with `icu_type_5cat` / `"ICU type (5 category)"` / `"Complete (mapped from ADT composite)"`.
+**Why:** Reflects actual carry-forward limit in use; aligns with W2 column rename.
+
+### W2 — New cell id=2276c8ee — inserted after Cell id=65 (icu_composite)
+**What:** Added a Python cell that maps `icu_composite` (9 raw ADT level combinations) to `icu_type_5cat` (5 agreed clinical categories: medical, surgical, neuro, cardiac, mixed) using an explicit dict. `fillna('unknown')` handles any future composites not in the map. Prints distribution and unmapped count.
+**Why:** Meeting 2026-06-12 decision: regression models use 5 clean clinical ICU categories, not raw `icu_location_type` strings. Reference level for regression = `mixed` (largest group). The raw `icu_location_type` and `icu_department_type` columns are retained in the parquet for Task 3 composite secondary analysis.
+
+### W2 — Cell id=102 (table1_data aggregation) — modified
+**What:** Changed `icu_type_5cat=('icu_type_5cat', lambda x: x.mode()[0] if not x.mode().empty else None)`.
+**Why:** Table 1 now uses the 5-category clinical column (modal ICU type per hospitalization) rather than the raw `icu_location_type`.
+
+### W2 — Cell id=103 (Table 1 definitions) — modified
+**What:** Changed `categorical_vars` key/label from `'icu_location_type': 'ICU Location Type, n (%)'` to `'icu_type_5cat': 'ICU Type (5 category), n (%)'`. Updated `var_order` from `'icu_location_type'` to `'icu_type_5cat'`.
+**Why:** Table 1 output uses the agreed 5-category column.
+
+### W3 — New cell id=task11_transfers — inserted after Cell id=23 (hospitalization view)
+**What:** Added a DuckDB query that joins `hosp_path` against the cohort `data` temp table on `hospitalizations_joined_id`, groups by `admission_type_category`, and prints the full distribution plus total outside-transfer count (n, %). Placed immediately after the hospitalization view so it runs before any exclusions.
+**Why:** Task 11 / meeting 2026-06-12 — team decided to include outside-IMV-transfer patients and defend the inclusion. Nick asked Casey to quantify how many there are for Methods. The `admission_type_category` field from the CLIF hospitalization table identifies transfer admissions.
