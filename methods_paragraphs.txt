@@ -238,3 +238,88 @@ was initiated at or before the time a patient first met persistent AHRF enrollme
 criteria were additionally excluded at the cohort-eligibility stage (n = 294 encounters,
 0.54% of 54,159 reviewed); these encounters never entered the analytic dataset.
 
+================================================================================
+TASK 11 — Confirm Outside-IMV-Transfer Handling
+Completed: 2026-06-12
+Source: Code review of ltvv_wrangler.ipynb (cells 10, 11, 23)
+================================================================================
+
+CONFIRMED HANDLING LOGIC
+================================================================================
+
+Outside-IMV-transfer patients (patients intubated at an outside hospital before
+transfer to a study hospital) are NOT explicitly excluded from the cohort. There
+is no admission_type, transfer-origin, or outside-hospital filter anywhere in the
+pipeline. The hospitalization table is queried only for age_at_admission,
+patient_id, and Elixhauser comorbidities (cell 23); transfer metadata is never
+accessed.
+
+INTUBATION TIME PROXY
+intubation_dttm is defined as MIN(recorded_dttm) from the respiratory_support
+table filtered to device_category ILIKE '%imv%' within episode 1 (cell 11,
+intubation_times CTE). Code comment: "First IMV record per cohort hospitalization
+within episode 1 = intubation proxy."
+
+For patients transferred already intubated, this timestamp is the first time
+ventilator settings were charted at the receiving hospital — not the actual
+intubation time at the transferring facility. The pipeline has no mechanism to
+detect or correct this.
+
+DAY-1 ASCERTAINMENT WINDOW
+The ≥5h window is applied from this EHR-based proxy:
+  day1_recs: recorded_dttm >= intubation_dttm + INTERVAL 5 HOURS  (cell 11)
+
+Example: patient intubated at outside hospital at 08:00, first charted locally
+at 12:00 → intubation_dttm = 12:00 → ≥5h window begins at 17:00, nine hours
+after true intubation. Any Vt measurement between 13:00 and 16:59 is excluded
+from day-1. If no qualifying Vt exists after 17:00, the patient contributes no
+day-1 observation.
+
+COHORT ENTRY (cell 10)
+cohort_meta uses vent_episode_id = '1' and vent_episode_duration_hours >= 24
+from the CLIF hourly waterfall table. For outside-IMV-transfer patients, both
+vent_episode_id and its duration count from the first local EHR IMV record —
+the same proxy. These patients enter the cohort if their local-EHR IMV episode
+is ≥24 hours in duration.
+
+NULL INTUBATION TIME
+Not applicable in practice: any patient who enters cohort_meta (requiring ≥1
+IMV record in the hourly table) will always yield a non-null intubation_dttm
+via MIN(). No recovery step is needed.
+
+DIRECTION OF BIAS (day-1 stratum only)
+For outside-IMV-transfer patients, the ≥5h window starts later than the true
+≥5h mark. The measured Vt therefore reflects a later, more stabilized point in
+the ventilation course. If these patients have already had settings titrated
+during transport, day-1 adherence may be slightly overestimated for this
+subgroup. The subsequent-day stratum is unaffected (no intubation-time reference).
+
+================================================================================
+DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE
+================================================================================
+
+The date and time of intubation were defined as the timestamp of the first
+invasive mechanical ventilation (IMV) record in the local electronic health
+record (EHR) for each hospitalization. For patients intubated at the study
+hospital, this timestamp directly reflects the start of mechanical ventilation.
+Patients transferred from outside hospitals while already receiving invasive
+mechanical ventilation were not explicitly excluded from the cohort; for these
+patients, the intubation proxy corresponds to the first time ventilator settings
+were documented at the receiving hospital rather than the time of the original
+intubation at the transferring facility. The day-1 measurement window (first
+non-null tidal volume set ≥5 hours after the local intubation proxy) therefore
+starts from an EHR-based surrogate that may underestimate elapsed time on the
+ventilator for outside-transfer patients.
+
+This limitation affects the day-1 stratum disproportionately. For
+outside-IMV-transfer patients, the true elapsed ventilation time at the ≥5h
+measurement point may be substantially longer than five hours, meaning the
+measured tidal volume reflects a later and potentially more stabilized point in
+the ventilation course. To the extent that outside-transfer patients have already
+had ventilator settings titrated during transport, their day-1 adherence may be
+slightly overestimated relative to patients intubated de novo at the study
+hospital. The magnitude of this bias depends on the proportion of
+outside-transfer patients in the cohort and the typical lag between true
+intubation and first local EHR charting; these quantities are not directly
+observable from the available data structure.
+

@@ -560,3 +560,13 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 #### Cell `task4_notele` — added
 **What:** Filters hospitals 6, 7, and 8 from each of the 5 MICE-imputed AHRF datasets (overall, day-1, subsequent) using `droplevels()` to remove empty factor levels. Re-fits all three primary AHRF-6 mixed-effects logistic regression models on the restricted cohort. Calls `summarize_model` for each (primary and no-TeleICU) and outputs a side-by-side HTML comparison via `create_model_summary_html` to `Figures/ahrf6_notele_sensitivity.html`.
 **Why:** R3 Major #1 — TeleICU coverage (hospitals 6, 7, 8) complicates attribution of ventilator decisions to the attending of record. Sensitivity tests whether primary MOR/ICC findings are driven by tele hospitals. `droplevels()` is required to prevent empty fixed-effect cells for the excluded hospitals in `glmer`.
+
+---
+
+## 2026-06-11 — ltvv_regression.ipynb — Task 6
+
+**Cells changed:** Cell id=103 (index 114) — modified
+
+#### Cell id=103 — modified
+**What:** Updated model label strings in the three primary `summarize_model()` calls: `'ahrf-6 Overall'` → `'Overall'`, `'ahrf-6 Initial'` → `'Day 1'`, `'ahrf-6 Subsequent'` → `'Subsequent Days'`.
+**Why:** Task 6 (Editor #5, R1 Minor #10) — Table 2 must have clear header labels matching the three-model structure. Labels for ahrf-8 and MV-8 models are unchanged.
