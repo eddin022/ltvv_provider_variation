@@ -28,6 +28,7 @@ output_no_share/
 output_to_box/
 intermediate_outputs/
 no_push/
+Figures/
 
 # Lead-site-only pooled analysis — not shared with partner sites
 pooled_results.ipynb
