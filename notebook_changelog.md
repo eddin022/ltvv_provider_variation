@@ -573,6 +573,48 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 
 ---
 
+## 2026-06-17 (R1 — Replace icu_location_type with icu_type_5cat in regression)
+
+**Notebook:** `ltvv_regression.ipynb`
+**Task:** TASK 2 — ICU Type as Cluster-Level Fixed Effect (downstream of W2 wrangler change)
+**Reviewer source:** Editor #1, R1 Major #1; meeting 2026-06-12
+
+### Cells id=9, 19, 20, icu_comp, task3_md, task3_comp, task4_notele, 32, 34, 45, 57, 70, 81, 92 — modified (14 cells)
+**What:** Global replacement of `icu_location_type` → `icu_type_5cat` across all regression cells. Additional targeted fixes:
+- Cell id=9: reference level changed from `icu_type_5cat = 'general_icu'` → `icu_type_5cat = 'mixed'` (mixed is the largest category ~134K rows, correct reference for the 5-category mapping)
+- Cell id=icu_comp: output filename changed from `ahrf6_icu_location_type_comparison.html` → `ahrf6_icu_type_comparison.html`
+- Cell id=task3_comp: `setdiff(explanatory_vars, "icu_type_5cat")` — composite secondary analysis now correctly drops `icu_type_5cat` before substituting `icu_composite`
+**Why:** W2 (wrangler) replaced the raw `icu_location_type` column with the clinically agreed 5-category `icu_type_5cat` mapping (meeting 2026-06-12). The regression notebook must use the same column name. Reference level changed to `mixed` (was `general_icu` under the old raw column) because the 5-category mapping assigns the dominant `general_icu` raw level to the `mixed` clinical category.
+
+### Cells id=9, task3_md, task3_comp — modified (icu_composite removal)
+**What:** Removed `icu_composite` entirely from the regression notebook as a functional variable:
+- Cell id=9: removed `'icu_composite'` from `factor_vars`; removed `icu_composite = 'general_icu - icu'` from `reference_levels`
+- Cell id=task3_md: updated markdown header to reflect Task 3 now reports `icu_type_5cat` distribution, not a composite model
+- Cell id=task3_comp: replaced the composite model fit (which swapped `icu_composite` in place of `icu_type_5cat`) with a frequency/provider-count table for `icu_type_5cat`. Removed `ahrf6_composite_model` fit and `ahrf6_task3_composite_comparison.html` output.
+**Why:** `icu_composite` as coded in the wrangler is a raw ADT string concatenation (`location_type + ' - ' + department_type`), an intermediate artifact that `icu_type_5cat` supersedes. The meeting 2026-06-12 agreed on `icu_type_5cat` (5 clinical categories) as the definitive ICU-type variable. Fitting a second model with the raw 9-level composite is redundant and uses a variable without clinical labels. Task 3's supplement output is now the `icu_type_5cat` distribution table, which satisfies the reviewer's request to report ICU type patient-days and provider counts.
+
+---
+
+## 2026-06-17 (R2 — Age per decade and sf_ratio per 10 units rescaling)
+
+**Notebook:** `ltvv_regression.ipynb`
+**Task:** TASK 7 — MOR Rescaling: Age Per Decade and P/F Per 10 mmHg
+**Reviewer source:** Editor #6; meeting 2026-06-12 (`%%` note: "unscale things... convert age to decades... same for PF ratio")
+
+### Cell id=9 — modified
+**What:** Added `use_scaling <- FALSE` flag above `scale_vars`. `scale_vars` reverts to all 8 variables (`age`, `bmi_calc`, `height_cm`, `elix_vw`, `laps2`, `ph`, `pco2`, `sf_ratio`). When `use_scaling = FALSE`, z-scoring is skipped; when `TRUE`, all 8 are z-scored.
+**Why:** Meeting `%%` note: "unscale things and see if models converge as is." A single boolean is easier to toggle and review than surgical per-variable exclusions. Default is `FALSE` (clinical units) per the meeting decision.
+
+### Cell id=10 — modified
+**What:** Prepended two rescaling lines before the `data_impute` split: `data$age <- data$age / 10` (1 unit = 1 decade) and `data$sf_ratio <- data$sf_ratio / 10` (1 unit = 10 sf_ratio units). These run regardless of `use_scaling`.
+**Why:** Unit rescaling must happen before the MICE split so imputed values are on the decade/per-10 scale. Independent of z-scoring — when `use_scaling = FALSE`, ORs are directly interpretable in clinical units; when `use_scaling = TRUE`, z-scoring is applied on top of the already-rescaled values.
+
+### Cell id=11 — modified
+**What:** Changed `prepare_data(data_combined, scale_vars, ...)` to `prepare_data(data_combined, if (use_scaling) scale_vars else character(0), ...)`. When `use_scaling = FALSE`, an empty character vector is passed so no variables are z-scored.
+**Why:** Single toggle point — flipping `use_scaling` in Cell id=9 propagates to all 5 imputed datasets without touching any other cell.
+
+---
+
 ## 2026-06-16 (W1 — Carry-forward reduction; W2 — ICU type 5-category; W3 — outside transfer count)
 
 **Notebook:** `ltvv_wrangler.ipynb`
@@ -606,3 +648,39 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### W3 — New cell id=task11_transfers — inserted after Cell id=23 (hospitalization view)
 **What:** Added a DuckDB query that joins `hosp_path` against the cohort `data` temp table on `hospitalizations_joined_id`, groups by `admission_type_category`, and prints the full distribution plus total outside-transfer count (n, %). Placed immediately after the hospitalization view so it runs before any exclusions.
 **Why:** Task 11 / meeting 2026-06-12 — team decided to include outside-IMV-transfer patients and defend the inclusion. Nick asked Casey to quantify how many there are for Methods. The `admission_type_category` field from the CLIF hospitalization table identifies transfer admissions.
+
+### W3 — New cell id=task11_intub_timing — inserted after cell id=task11_transfers
+**What:** Added a Python cell that computes hours from admission to first IMV record for every cohort hospitalization, grouped by admission type. Outputs a summary table (median, IQR, % arrived already intubated) and a histogram saved to `output_path/task11_intubation_timing.png`.
+**Why:** Task 11 follow-up — quantifies how many OSH patients arrived already on IMV (negative hours-to-intubation). Provides Methods-paragraph numbers for outside-transfer handling per reviewer request.
+
+---
+
+## 2026-06-17
+
+**Notebook:** `ltvv_regression.ipynb`
+**Tasks:** TASK 7 (age/sf_ratio rescaling, use_scaling flag), TASK 3 (icu_composite removal), TASK 17 (day-1 provider stats)
+**Reviewer source:** Meeting 2026-06-12 (Nick and Claire)
+
+### R1 — Global find/replace across all model cells — modified
+**What:** Replaced every occurrence of `icu_location_type` with `icu_type_5cat` across all model formula cells (ahrf-6 overall, day-1, subsequent; ahrf-8 overall, day-1, subsequent; TeleICU-excluded sensitivity), the `explanatory_vars` definition cells, and the Task 2 before/after MOR comparison cell. Updated reference level from `general_icu` to `mixed`.
+**Why:** Downstream of wrangler W2 — the parquet now exports `icu_type_5cat` instead of `icu_location_type` as the primary ICU-type covariate. Reference level = `mixed` (largest group, ~134K rows).
+
+### R1 — Cell id=task3_comp — replaced
+**What:** Replaced the ICU composite secondary model (which fitted 9-level `icu_composite` as random effect) with a frequency-distribution table of `icu_type_5cat` (patient-days and unique providers per category). `icu_composite` removed from regression entirely.
+**Why:** User decision: `icu_type_5cat` is the definitive variable; `icu_composite` was an intermediate artifact. The 9-level composite model is not needed.
+
+### R2 — Cell id=9 (variable definitions) — modified
+**What:** Added `use_scaling <- FALSE` boolean flag. Kept all 8 variables in `scale_vars` (including `age` and `sf_ratio`). Removed `icu_composite` from `factor_vars` and `reference_levels`. Added `icu_type_5cat = 'mixed'` reference level.
+**Why:** Task 7 — `use_scaling` flag controls whether z-scoring is applied in `prepare_data()`. When FALSE (current default), ORs are in raw clinical units. Age and sf_ratio are rescaled in Cell id=10 (per-decade and per-10 units) regardless of flag.
+
+### R2 — Cell id=10 (imputation setup) — modified
+**What:** Prepended two rescaling lines before the MICE split: `data$age <- data$age / 10` and `data$sf_ratio <- data$sf_ratio / 10`. `original_means` and `original_sds` are computed after rescaling, so they reflect decade-scale age and per-10-unit sf_ratio.
+**Why:** Task 7 (Editor #6, meeting 2026-06-12) — express age as per-decade and sf_ratio as per-10 units for clinical comparison against provider MOR. Rescaling before MICE ensures imputation operates on the clinical scale throughout.
+
+### R2 — Cell id=11 (MICE + prepare_data) — modified
+**What:** Changed `prepare_data()` call to pass `if (use_scaling) scale_vars else character(0)` as the scale_vars argument.
+**Why:** Implements the `use_scaling` boolean introduced in Cell id=9 — when FALSE, `prepare_data()` receives an empty vector and performs no z-scoring.
+
+### R3 — New cell id=task17_day1_stats — inserted after cell id=task17_fig2_stats
+**What:** Added an R cell computing provider-level LTVV adherence statistics on day-1 observations only (`initial_ahrf_data[[1]]`): n providers never adherent on day 1, n providers >50% adherent on day 1.
+**Why:** Task 17 / `%%` note in 260612_summary.md — "do stat on just initial day and see what that is. in ahrf-6 group. plan to say that stat and add to intro." Complements the overall Figure 2 stats from the existing task17_fig2_stats cell.
