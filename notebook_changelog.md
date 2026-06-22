@@ -685,3 +685,13 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 **What:** Added an R cell computing provider-level LTVV adherence statistics on day-1 observations only (`initial_ahrf_data[[1]]`): n providers never adherent on day 1, n providers >50% adherent on day 1.
 **Why:** Task 17 / `%%` note in 260612_summary.md — "do stat on just initial day and see what that is. in ahrf-6 group. plan to say that stat and add to intro." Complements the overall Figure 2 stats from the existing task17_fig2_stats cell.
 
+
+---
+
+## 2026-06-22
+
+### Cell id=11 — modified
+**Notebook:** ltvv_regression.ipynb
+**Task:** Bugfix (no task number — syntax error)
+**What:** Removed trailing comma after `icu_type_5cat = 'mixed'` in `reference_levels <- list(...)`.
+**Why:** R does not permit trailing commas in `list()` calls; the stray comma caused "argument 5 is empty" error at cell 6 execution, blocking all downstream model runs.
