@@ -9,6 +9,8 @@
 *.pickle
 *.rds
 !umn_models_to_share/*.rds
+!DXCCSR_map.csv
+!DXCCSR_naming_convention.csv
 *.rda
 *.xlsx
 *.xls
