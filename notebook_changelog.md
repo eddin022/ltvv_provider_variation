@@ -695,3 +695,9 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 **Task:** Bugfix (no task number — syntax error)
 **What:** Removed trailing comma after `icu_type_5cat = 'mixed'` in `reference_levels <- list(...)`.
 **Why:** R does not permit trailing commas in `list()` calls; the stray comma caused "argument 5 is empty" error at cell 6 execution, blocking all downstream model runs.
+
+### Cell id=32 — modified (same date: 2026-06-22)
+**Notebook:** ltvv_regression.ipynb
+**Task:** Task 17 (Day-1 variant) bugfix
+**What:** Wrapped the three adjacent string literals inside `cat(sprintf(...))` in `paste0()` to concatenate them before formatting.
+**Why:** R does not auto-concatenate adjacent string literals; the missing commas caused "unexpected string constant" parse error, blocking cell execution.
