@@ -931,3 +931,18 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cells 27, 51, 63, 77, 88, 99, 112 — forest plot call sites: broken file.path() syntax
 **What changed:** Prior replacement turned `file.path(figures_dir, "....tiff")` into `file.path(figures_dir, "....tiff",` (the closing ) was consumed), passing reference_rows to file.path() instead of create_forest_plot(). Fixed to `file.path(figures_dir, "....tiff"),` with closing paren before the comma.
 **Why:** Would have passed fe_reference_rows as extra path components to file.path(), likely causing a vector-filename error in ggsave.
+
+## 2026-06-22 — Robustify reference row rendering in table and plot functions
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (create_fe_table, create_forest_plot)
+**Task:** Bug fix — references not appearing in output
+
+### create_fe_table: three robustness fixes
+1. **Explicit is_ref flag**: model rows get `is_ref = FALSE` before injection; reference rows get `is_ref = TRUE` in ref_df. The OR/p-value formatting now uses this flag (via mapply/sapply) instead of relying on `is.na(OR)`.
+2. **mapply/sapply instead of dplyr::if_else**: avoids dplyr type-strictness errors when `gtsummary::style_pvalue(NA)` returns an unexpected type; each row is processed independently.
+3. **setdiff fallback in custom_order step**: any term not in custom_order now goes to the END rather than becoming NA (which caused silent blank rows). Changed `intersect(custom_order, all_terms)` → `c(intersect(...), setdiff(...))`.
+4. **Diagnostic message**: `message("Reference rows injected: N")` printed when injection runs — confirms function received reference_rows.
+
+### create_forest_plot: setdiff fallback in factor ordering
+Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pretty))))` → uses `c(intersect(custom_order, all_labels), setdiff(all_labels, custom_order))` so reference labels not in custom_order still appear in the plot (at the end) rather than becoming NA and being silently dropped by ggplot2.
