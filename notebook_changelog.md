@@ -811,3 +811,13 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cell 32 — Task 17 Day-1 `sprintf`/`paste0`: `%%%%` → `%%`
 **What changed:** Corrected percent-sign escaping in the `paste0` format string from `"0%%%% of day-1 encounters"` to `"0%% of day-1 encounters"` (and two similar occurrences).
 **Why:** In a `paste0` string used as the format argument to `sprintf`, `%%` is the correct escape for a literal `%` in the output. `%%%%` causes `sprintf` to see `%%%%` → emit `%%` (two percent signs), displaying "0%%" instead of "0%" in the console output.
+
+## 2026-06-22 — Convergence Fix: Gradient Restart in fit_glmer_model
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (fit_glmer_model helper)
+**Task:** Cross-cutting convergence / Task 5 (year separation)
+
+### Cell 5 — `fit_glmer_model`: add gradient restart on convergence warnings
+**What changed:** After the initial bobyqa fit (`maxfun = 2e6`), check `fit@optinfo$conv$lme4$messages`. If convergence warnings are present, call `update(fit, start = getME(fit, c("theta","fixef")), ...)` with `maxfun = 2e7` (10x). Accept the restarted fit only if it has fewer warnings than the original.
+**Why:** `recorded_year` as a factor (15 year dummies, 2011–2025) creates near-complete separation in sparse year cells, making the Hessian ill-conditioned. The gradient-restart approach is the canonical lme4 fix (Ben Bolker FAQ): re-entering bobyqa from the converged parameter vector lets the optimizer escape the degenerate region with a larger iteration budget. Does not yet implement Task 5 era collapse — that is still conditional on whether year ORs are in the millions after this rerun.
