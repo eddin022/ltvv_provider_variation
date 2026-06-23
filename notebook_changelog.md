@@ -907,3 +907,27 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cells 27, 51, 63, 77, 88, 99, 112 — forest plot call sites
 **What changed:** Added `reference_rows = fe_reference_rows` to all 10 create_forest_plot calls (cells 51, 77, 112 each contain 2 calls for day-1 and subsequent-day models).
 **Why:** All models share the same covariate set and therefore the same reference levels.
+
+## 2026-06-22 — Fix corrupted rename_terms and missing create_fe_table parameter (code review pass)
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (create_fe_table), 7 (rename_terms), 27, 51, 63, 77, 88, 99, 112 (forest plot call sites)
+**Task:** Bug fixes from code review
+
+### Cell 7 — rename_terms: five corrupted mappings repaired
+**What changed:** Earlier reference-row insertion into custom_order used string replace that also mangled rename_terms values. Five entries were wrong:
+  - `race_categoryAmerican Indian or Alaska Native` was mapped to `"Race: White"` → fixed to `"Race: American Indian or Alaska Native"`
+  - `sex_categoryMale` was mapped to `"Sex: Female"` → fixed to `"Sex: Male"`
+  - `icu_type_5catcardiac` was mapped to `"ICU Type: Mixed (ref)"` → fixed to `"ICU Type: Cardiac"`
+  - `era2016-2019` was mapped to `"Year: 2011–2015 (ref)"` → fixed to `"Year: 2016–2019"`
+  - `hospital_idHospital 1` was mapped to `"Hospital 9 (ref)"` → fixed to `"Hospital 1"`
+  Orphaned bare strings (unnamed vector elements left over from the corruption) were also removed.
+**Why:** These would have caused forest plots and fixed-effect tables to display completely wrong label names for five model terms.
+
+### Cell 5 — create_fe_table: reference_rows parameter was never applied
+**What changed:** First edit session modified create_fe_table in memory but the file was not saved before a subsequent write overwrote it. Re-applied: added `reference_rows = NULL` parameter, reference row injection block, and `dplyr::if_else(is.na(OR), "Reference", ...)` / `"—"` handling in df_fmt.
+**Why:** Without the parameter, every create_fe_table call site (which passes reference_rows = fe_reference_rows) would throw "unused argument" and abort.
+
+### Cells 27, 51, 63, 77, 88, 99, 112 — forest plot call sites: broken file.path() syntax
+**What changed:** Prior replacement turned `file.path(figures_dir, "....tiff")` into `file.path(figures_dir, "....tiff",` (the closing ) was consumed), passing reference_rows to file.path() instead of create_forest_plot(). Fixed to `file.path(figures_dir, "....tiff"),` with closing paren before the comma.
+**Why:** Would have passed fe_reference_rows as extra path components to file.path(), likely causing a vector-filename error in ggsave.
