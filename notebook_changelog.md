@@ -861,3 +861,17 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cell 36 — ahrf6_no_icu_model: use fit_glmer_model helper
 **What changed:** Replaced bare `future_lapply(ahrf_data, function(df) { glmer(...) }, future.seed = 42L)` with `fit_glmer_model(ahrf_data, ahrf6_no_icu_vars, "ltvv_6")`. Also removed the now-redundant `formula_no_icu` and `message(paste("No-ICU formula:", ...))` lines (fit_glmer_model prints the formula itself).
 **Why:** This was the only model-fitting call bypassing the helper. Without fit_glmer_model, the no-ICU model skips the gradient restart logic and is inconsistently seeded. Using the helper ensures consistent optimizer settings, seeding, and restart behavior across all models.
+
+## 2026-06-22 — Forest plot: collapse two-panel (main + year) to single panel
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (create_forest_plot); 27, 51, 63, 77, 88, 99, 112 (call sites)
+**Task:** Cross-cutting display change following Task 5 era collapse
+
+### Cell 5 — create_forest_plot: remove two-panel layout
+**What changed:** Removed `year_breaks`, `year_limits` parameters, `plot_group` split, `plot_main`/`plot_years` separation, and patchwork combination. Now produces a single forest plot showing all fixed effects on one axis. Default `height` increased from 4 to 10 to accommodate a taller single panel.
+**Why:** The two-panel design existed because individual year ORs were in the millions and required a completely different axis scale from main effects. After era collapse to 4 eras (Task 5), era ORs are in the same range as patient/hospital effects and belong on the same panel with the same axis.
+
+### Cells 27, 51, 63, 77, 88, 99, 112 — call sites: remove year_breaks / year_limits arguments
+**What changed:** Stripped `year_breaks = c(...)` and `year_limits = c(...)` lines from all seven create_forest_plot call sites.
+**Why:** Parameters no longer exist in the function signature.
