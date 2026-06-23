@@ -701,3 +701,113 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 **Task:** Task 17 (Day-1 variant) bugfix
 **What:** Wrapped the three adjacent string literals inside `cat(sprintf(...))` in `paste0()` to concatenate them before formatting.
 **Why:** R does not auto-concatenate adjacent string literals; the missing commas caused "unexpected string constant" parse error, blocking cell execution.
+
+---
+
+## 2026-06-22 — Code Review Fixes (batch)
+
+### Cell id=1 — modified
+**Task:** Code review fix #1 — duplicate library
+**What:** Removed duplicate `library(patchwork)` call.
+**Why:** Loaded twice on lines ~13 and ~17; redundant and adds startup noise.
+
+### Cell id=5 — modified
+**Task:** Code review fixes #2, 4, 5, 8, 9
+**What:** Five changes to the functions cell:
+(a) `extract_random_effects` — added optional `re_group = "prov_npi_shifted"` parameter so the random-effect group is not hard-coded.
+(b) `create_forest_plot` — added `exists("rename_terms")` and `exists("custom_order")` guards to prevent errors when those globals are absent.
+(c) `summarize_model` — ICC now pooled on the logit scale (Rubin's rules on logit-transformed ICC, back-transformed to [0,1]) so CI cannot exceed bounds.
+(d) `create_model_summary_html` — NNT column header relabelled "NNT (illustrative)" to match manuscript framing.
+(e) Added `fit_glmer_model(data_list, explanatory_vars, outcome, random_effect)` helper encapsulating the `future_lapply(glmer(...), future.seed = 42L)` pattern, eliminating repeated boilerplate and fixing parallel seed propagation.
+**Why:** Reviewers/analysis: robustness, reproducibility, and statistical correctness across all models.
+
+### Cell id=22 — modified
+**Task:** Code review fix #10 (mutable globals) + fix #2 (future.seed)
+**What:** Defined `ahrf6_vars` as a named local variable; replaced manual `glmer` loop with `fit_glmer_model`.
+**Why:** `explanatory_vars` was a mutable global overwritten 8+ times; re-running any model cell silently corrupted downstream formulas.
+
+### Cell id=35 — modified
+**Task:** Code review fix #10 + fix #2
+**What:** No-ICU comparison cell now references `ahrf6_vars` instead of global `explanatory_vars`; added `future.seed = 42L`.
+**Why:** Same mutable-global fragility + reproducibility.
+
+### Cell id=39 — modified
+**Task:** Code review fix #3
+**What:** Complete-case row filter now matches by `hospitalizations_joined_id` instead of positional row index.
+**Why:** Positional indexing silently misaligns if row order differs between `ahrf_data_preimpute` and any imputed dataset.
+
+### Cell id=41 — modified
+**Task:** Code review fix #1 (execution order) + fix #10 + fix #2
+**What:** Removed comparison summary block (which referenced `ahrf6_initial_model` and `ahrf6_subsequent_model` defined in later cells); replaced manual `glmer` loops with `fit_glmer_model`.
+**Why:** Running cell 41 before cells 44/46 errored with "object not found". Comparison block moved to new cell 53.
+
+### Cells id=44, 46 — modified
+**Task:** Code review fix #10 + fix #2
+**What:** Both day-1 and subsequent ahrf6 model cells replaced with single-line `fit_glmer_model` calls.
+**Why:** Eliminated copy-paste boilerplate and mutable-global mutation.
+
+### New cell id=task4_comparison — inserted at position 53
+**Task:** Code review fix #1 (execution order fix)
+**What:** Task 4 comparison summary (primary vs. No-TeleICU MOR/ICC) now runs after cells 44 and 46, ensuring `ahrf6_initial_model` and `ahrf6_subsequent_model` are defined.
+**Why:** Correct execution order for the Task 4 sensitivity analysis output.
+
+### Cells id=58,70,72,83,94,105,107 — modified
+**Task:** Code review fix #10 + fix #2
+**What:** All remaining model-fitting cells (ahrf8 overall/initial/subsequent, COVID sensitivity, mv8 overall/initial/subsequent) refactored to use `fit_glmer_model` with uniquely-named local var lists (`ahrf8_vars`, `covid_vars`, `mv8_vars`).
+**Why:** Eliminated mutable-global `explanatory_vars` overwriting pattern across 8 cells; parallel seeds now correctly propagated.
+
+---
+
+## 2026-06-22 — Back-transform scaled coefficients to clinical units
+
+### Cell id=5 — modified (pool_fixed_effects)
+**Task:** Task 7 / convergence fix follow-up
+**What:** `pool_fixed_effects` now accepts `sds`, `vars_to_bt`, and `vars_to_skip` arguments. By default it back-transforms all `scale_vars` (using `original_sds`) except `laps2`, dividing β_scaled and SE by the SD used for z-scoring so OR is on the clinical unit scale: OR = exp(β_scaled / SD).
+**Why:** Model must be fit on z-scored predictors for Hessian stability (especially Task 4 TeleICU-excluded subset), but ORs should be reported in interpretable clinical units. laps2 is excluded from back-transformation and stays per 1-SD per CLAUDE.md Task 7 guidance.
+
+---
+
+## 2026-06-22 — Remove vars_to_skip from pool_fixed_effects
+
+### Cell id=5 — modified (pool_fixed_effects)
+**Task:** Task 7 / back-transform correction
+**What:** Removed `vars_to_skip` parameter; all `scale_vars` (including `laps2`) are now back-transformed to clinical units via β_original = β_scaled / SD.
+**Why:** User confirmed laps2 should also be reported in its own units, not per 1-SD. vars_to_skip was unnecessary complexity.
+
+---
+
+## 2026-06-22 — Final code review: back-transform correctness fixes
+
+### Cell id=5 — modified (pool_fixed_effects + prepare_data)
+**Task:** Code review of back-transformation implementation
+**What:** Three fixes:
+(a) `pool_fixed_effects` — back-transform now guarded by `use_scaling == TRUE`; if scaling was not applied to the model, SDs are not used, preventing double-deflation of already-natural-unit coefficients.
+(b) `pool_fixed_effects` — CI now uses per-row Barnard-Rubin df (`qt(0.975, df[var])`) from `testEstimates` instead of hardcoded 1.96, consistent with the pooled p-values.
+(c) `prepare_data` — `scale()` output wrapped in `as.numeric()` to drop the 1-column matrix dimension and keep columns as plain numeric vectors.
+**Why:** (a) Silent wrong ORs when use_scaling=FALSE. (b) 1.96 is inconsistent with the t-critical value implied by pooled p-values at small df. (c) matrix columns can cause unexpected coercion behaviour downstream.
+
+## 2026-06-22 — Code Review Pass 1–3 (Iterative Bug-Fix Loop)
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (functions), 32 (Task 17 Day-1 sprintf)
+**Task:** Cross-cutting code quality / correctness; also fixes from prior session passes
+
+### Cell 5 — `pool_fixed_effects`: `extra.pars = FALSE`
+**What changed:** Changed `mitml::testEstimates(model = model_obj, extra.pars = TRUE)` to `extra.pars = FALSE`.
+**Why:** With `extra.pars = TRUE`, `testEstimates` appends variance-component rows (e.g., `Var1[prov_npi_shifted]`) to the estimates matrix. These rows then appeared in the fixed-effects output table as nonsensical ORs (e.g., `exp(0.47)` for a random-intercept variance). Removing extra.pars keeps only fixed-effect rows; MOR/ICC are extracted directly from `VarCorr()` in `summarize_model`.
+
+### Cell 5 — `random_effect_aor`: add `ggsave` before `return(p)`
+**What changed:** Added `ggplot2::ggsave(figure_name, plot = p, dpi = 600, width = 8, height = 6)` inside `random_effect_aor` before `return(p)`.
+**Why:** The function accepted a `figure_name` parameter but never saved the plot, silently dropping each individual AOR plot. All callers pass a `figure_name` expecting the file to be written; now it is.
+
+### Cell 5 — `create_fe_table`: variance-component row filter
+**What changed:** Added `df <- df %>% dplyr::filter(!grepl("^(Var|Cov)[0-9]+\\[", Term))` after the intercept-drop block.
+**Why:** Belt-and-suspenders guard in case `extra.pars` is re-enabled elsewhere; ensures variance-component rows never surface as table rows.
+
+### Cell 5 — `prepare_data`: `!is.null(means[[var]])` → `var %in% names(means)`
+**What changed:** Guard condition now uses `var %in% names(means) && var %in% names(sds)` instead of `!is.null(means[[var]])`.
+**Why:** `means` is a named numeric vector (from `sapply`). For missing keys, `numeric_vec[["nonexistent"]]` returns `NA`, not `NULL`, so `!is.null(NA)` is `TRUE` — the guard would pass and `scale(..., center = NA)` would silently produce all-NA values. Name-membership check correctly handles this.
+
+### Cell 32 — Task 17 Day-1 `sprintf`/`paste0`: `%%%%` → `%%`
+**What changed:** Corrected percent-sign escaping in the `paste0` format string from `"0%%%% of day-1 encounters"` to `"0%% of day-1 encounters"` (and two similar occurrences).
+**Why:** In a `paste0` string used as the format argument to `sprintf`, `%%` is the correct escape for a literal `%` in the output. `%%%%` causes `sprintf` to see `%%%%` → emit `%%` (two percent signs), displaying "0%%" instead of "0%" in the console output.
