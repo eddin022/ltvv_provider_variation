@@ -821,3 +821,43 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cell 5 — `fit_glmer_model`: add gradient restart on convergence warnings
 **What changed:** After the initial bobyqa fit (`maxfun = 2e6`), check `fit@optinfo$conv$lme4$messages`. If convergence warnings are present, call `update(fit, start = getME(fit, c("theta","fixef")), ...)` with `maxfun = 2e7` (10x). Accept the restarted fit only if it has fewer warnings than the original.
 **Why:** `recorded_year` as a factor (15 year dummies, 2011–2025) creates near-complete separation in sparse year cells, making the Hessian ill-conditioned. The gradient-restart approach is the canonical lme4 fix (Ben Bolker FAQ): re-entering bobyqa from the converged parameter vector lets the optimizer escape the degenerate region with a larger iteration budget. Does not yet implement Task 5 era collapse — that is still conditional on whether year ORs are in the millions after this rerun.
+
+## 2026-06-22 — Task 5: Era Collapse (recorded_year → 4 eras)
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** inserted new cell 17 (era creation); modified cell 22 (vars_all), cell 23 (ahrf6_vars), cell 40 (CC analysis)
+**Task:** Task 5 — Year Separation Re-Check; Conditional Era Collapse
+
+### New Cell 17 — Add era variable to all data lists
+**What changed:** Inserted `add_era()` helper that maps `recorded_year` → 4 eras (2011-2015, 2016-2019, 2020-2022, 2023-2025) and applies it to `ahrf_data`, `mv_data`, `initial_ahrf_data`, `subsequent_ahrf_data`, `initial_mv_data`, `subsequent_mv_data`. Placed before cell 17 alias assignments so `ahrf6_data`/`ahrf8_data` inherit `era` automatically.
+**Why:** Persistent convergence warnings (degenerate Hessian, unable to evaluate scaled gradient) in the overall AHRF-6 model after the gradient-restart fix confirmed complete separation in sparse early-year dummy cells. CLAUDE.md Task 5 specifies era collapse as the conditional fix when "year ORs are still in the millions with CIs spanning 0 to infinity."
+
+### Cell 22 (was 21) — vars_all: recorded_year → era
+**What changed:** Replaced `"recorded_year"` with `"era"` in the missingness check variable list.
+**Why:** Model now uses `era`; missingness check should reflect the actual model variables.
+
+### Cell 23 (was 22) — ahrf6_vars: recorded_year → era
+**What changed:** Replaced `"recorded_year"` with `"era"` in `ahrf6_vars`. All models (overall, day-1, subsequent, no-ICU, TeleICU sensitivity, CC, AHRF-8, MV-8, COVID) use `ahrf6_vars` as the base covariate set and will now use era.
+**Why:** 4-era fixed effect provides stable year-trend control without per-year complete separation.
+
+### Cell 40 (was 39) — CC analysis: model_vars_cc uses recorded_year for pre-imputation lookup
+**What changed:** `model_vars_cc` now uses `setdiff(ahrf6_vars, "era")` + `"recorded_year"` instead of raw `ahrf6_vars`, so `complete.cases` can look up the variable in `ahrf_data_preimpute` (which predates era creation and has no `era` column).
+**Why:** `ahrf_data_preimpute` is saved before the era cell runs and has no `era` column. Since `era` is derived from `recorded_year` and is never missing, substituting `recorded_year` in the CC check is equivalent.
+
+## 2026-06-22 — Code Review: rename_terms/custom_order era update; cell 36 fix
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 7 (rename_terms, custom_order), 36 (ahrf6_no_icu_model)
+**Task:** Cross-cutting code review after Task 5 era collapse
+
+### Cell 7 — rename_terms: replace 14 recorded_year entries with 3 era entries
+**What changed:** Removed `recorded_year2012`–`recorded_year2025` from `rename_terms` and replaced with `era2016-2019`, `era2020-2022`, `era2023-2025` mapped to `"Year: 2016–2019"` etc. (Unicode en-dash). Added `icu_type_5cat` entries (cardiac, medical, neurologic, surgical).
+**Why:** After era collapse, model terms are `era2016-2019` etc. — not individual year terms. Without this fix, era dummy terms would appear as raw R variable names in the forest plot and would miss the `^Year:` regex that routes them to the "Year Effects" panel. ICU type was a new Task 2 covariate with no display-name mapping.
+
+### Cell 7 — custom_order: replace 14 year entries with 3 era entries + add ICU type
+**What changed:** Replaced 14 "Year: 20XX" entries in `custom_order` with "Year: 2016–2019", "Year: 2020–2022", "Year: 2023–2025". Added ICU type entries (Cardiac, Medical, Neurologic, Surgical) after the hospital block.
+**Why:** Same as rename_terms — unmapped terms are unordered in the forest plot table, and terms not in custom_order fall to the bottom of the factor level ordering.
+
+### Cell 36 — ahrf6_no_icu_model: use fit_glmer_model helper
+**What changed:** Replaced bare `future_lapply(ahrf_data, function(df) { glmer(...) }, future.seed = 42L)` with `fit_glmer_model(ahrf_data, ahrf6_no_icu_vars, "ltvv_6")`. Also removed the now-redundant `formula_no_icu` and `message(paste("No-ICU formula:", ...))` lines (fit_glmer_model prints the formula itself).
+**Why:** This was the only model-fitting call bypassing the helper. Without fit_glmer_model, the no-ICU model skips the gradient restart logic and is inconsistently seeded. Using the helper ensures consistent optimizer settings, seeding, and restart behavior across all models.
