@@ -875,3 +875,21 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cells 27, 51, 63, 77, 88, 99, 112 — call sites: remove year_breaks / year_limits arguments
 **What changed:** Stripped `year_breaks = c(...)` and `year_limits = c(...)` lines from all seven create_forest_plot call sites.
 **Why:** Parameters no longer exist in the function signature.
+
+## 2026-06-22 — Fixed effects tables: rename output files; add reference levels
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (create_fe_table), 7 (custom_order, fe_reference_rows), 25, 49, 61, 75, 86, 97, 110 (call sites)
+**Task:** Cross-cutting display improvement
+
+### Cell 5 — create_fe_table: reference_rows parameter
+**What changed:** Added `reference_rows = NULL` parameter. When supplied, injects rows with `OR = NA` into the table before ordering; these display as "Reference" in the OR column and "—" in the p-value column.
+**Why:** Regression tables should show the reference category for each factor alongside the estimated contrasts, so readers don't need to look up the reference levels separately.
+
+### Cell 7 — custom_order: reference label positions; fe_reference_rows definition
+**What changed:** Inserted "Race: White", "Sex: Female", "Hospital 9 (ref)", "ICU Type: Mixed (ref)", "Year: 2011–2015 (ref)" into custom_order immediately before their respective factor groups. Added `fe_reference_rows` vector with the same labels for use in all create_fe_table calls.
+**Why:** custom_order controls table row ordering; reference rows must appear in the right group position.
+
+### Cells 25, 49, 61, 75, 86, 97, 110 — create_fe_table calls: new filenames + reference_rows
+**What changed:** All output filenames renamed to the pattern `{model}_fixed_effects_table.html` (e.g., "ahrf6.html" → "ahrf6_fixed_effects_table.html", "MV8.html" → "mv8_fixed_effects_table.html"). Added `reference_rows = fe_reference_rows` to every call.
+**Why:** Old filenames (e.g., "ahrf6.html", "MV8.html") gave no indication of what kind of table the file contained.
