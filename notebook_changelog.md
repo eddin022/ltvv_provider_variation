@@ -893,3 +893,17 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 ### Cells 25, 49, 61, 75, 86, 97, 110 — create_fe_table calls: new filenames + reference_rows
 **What changed:** All output filenames renamed to the pattern `{model}_fixed_effects_table.html` (e.g., "ahrf6.html" → "ahrf6_fixed_effects_table.html", "MV8.html" → "mv8_fixed_effects_table.html"). Added `reference_rows = fe_reference_rows` to every call.
 **Why:** Old filenames (e.g., "ahrf6.html", "MV8.html") gave no indication of what kind of table the file contained.
+
+## 2026-06-22 — Forest plots: add reference level markers
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 5 (create_forest_plot), 27, 51, 63, 77, 88, 99, 112 (call sites)
+**Task:** Cross-cutting display improvement
+
+### Cell 5 — create_forest_plot: reference_rows parameter
+**What changed:** Added `reference_rows = NULL` parameter. When supplied, injects rows with `OR = 1.0` and `CI_lower/upper = NA` before the factor-ordering step. These appear as open diamonds (shape 5) at OR=1 on the dashed reference line, with no error bars (`na.rm = TRUE`). Model-estimated terms remain filled circles (shape 16). Legend suppressed (`guide = "none"`).
+**Why:** Adds visual context to forest plots — readers see the reference category for each factor group in the correct position on the y-axis, sitting on the reference line.
+
+### Cells 27, 51, 63, 77, 88, 99, 112 — forest plot call sites
+**What changed:** Added `reference_rows = fe_reference_rows` to all 10 create_forest_plot calls (cells 51, 77, 112 each contain 2 calls for day-1 and subsequent-day models).
+**Why:** All models share the same covariate set and therefore the same reference levels.
