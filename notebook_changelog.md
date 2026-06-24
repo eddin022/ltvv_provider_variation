@@ -946,3 +946,45 @@ Both queries mirror the Cell 11 `day1_recs` / `subseq_recs` CTE logic exactly (s
 
 ### create_forest_plot: setdiff fallback in factor ordering
 Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pretty))))` → uses `c(intersect(custom_order, all_labels), setdiff(all_labels, custom_order))` so reference labels not in custom_order still appear in the plot (at the end) rather than becoming NA and being silently dropped by ggplot2.
+
+## 2026-06-24
+
+### ltvv_wrangler.ipynb
+
+- **Cell 33** (modified) — Rewrote `icu_type` DuckDB temp table. Removed `department_type` from CTE and `icu_location_type`/`icu_department_type` from SELECT. Added CASE WHEN to compute 3-level `icu_type` directly from `location_type`: `medical_icu`, `mixed_specialty` (mixed_neuro_icu / cardiac_icu / mixed_cardiothoracic_icu), `general_icu` (all else including NULLs). Removed COALESCE on `out_dttm` — NULL out_dttm now means the range filter fails and the row falls through to `general_icu` rather than falsely extending a stay to '9999-12-31'. — **Task 2** (ICU type as cluster-level fixed effect)
+
+- **Cell 71** (modified) — Replaced `icu_type.icu_location_type, icu_type.icu_department_type` with `icu_type.icu_type` in final_df SELECT. — **Task 2**
+
+- **Cell 73** (modified) — Removed `icu_composite` creation (`icu_location_type + ' - ' + icu_department_type`). No longer needed since ICU type is fully derived in DuckDB. — **Task 2**
+
+- **Cell 74** (modified) — Removed `icu_composite_map` dict and `icu_type_5cat` assignment. Replaced with simple `icu_type` distribution print. — **Task 2**
+
+- **Cell 103** (modified) — Updated missingness table entry from `icu_type_5cat` to `icu_type` with updated description. — **Task 9** / **Task 2**
+
+- **Cell 111** (modified) — Updated Table 1 aggregation from `icu_type_5cat` to `icu_type`. — **Task 2**
+
+- **Cell 112** (modified) — Updated Table 1 categorical variable label and var_order from `icu_type_5cat` to `icu_type`. — **Task 2**
+
+### ltvv_regression.ipynb
+
+- **Cell 7** (modified) — Replaced 5 `icu_type_5cat*` rename_terms entries with 2 (`icu_typemedical_icu`, `icu_typemixed_specialty`). Replaced 6-item ICU custom_order block with 3-item block (`ICU Type: General (ref)`, `ICU Type: Medical`, `ICU Type: Mixed Specialty`). Updated fe_reference_rows from `ICU Type: Mixed (ref)` to `ICU Type: General (ref)`. — **Task 2**
+
+- **Cell 11** (modified) — Updated factor_vars from `icu_type_5cat` to `icu_type`; reference level from `mixed` to `general_icu`. — **Task 2**
+
+- **Cell 22** (modified) — Updated vars_all missingness check from `icu_type_5cat` to `icu_type`. — **Task 2**
+
+- **Cell 23** (modified) — Updated ahrf6_vars from `icu_type_5cat` to `icu_type`. Propagates to ahrf8_vars and mv8_vars. — **Task 2**
+
+- **Cell 36** (modified) — Updated setdiff call from `icu_type_5cat` to `icu_type`. — **Task 2**
+
+- **Cell 37** (modified) — Updated markdown comment to reflect 3-category DuckDB derivation. — **Task 2**
+
+- **Cell 38** (modified) — Updated code comment; replaced group_by from `icu_type_5cat` to `icu_type`. — **Task 2**
+
+- **Cell 72** (modified) — Updated diagnostic group_by from `icu_type_5cat` to `icu_type`. — **Task 2**
+
+### ltvv_regression.ipynb (continued, 2026-06-24)
+
+- **Cell 37** (modified) — Updated markdown heading from "ICU Type 5-Category Distribution" to "3-Category Distribution". — **Task 2** (cosmetic)
+
+- **Cell 38** (modified) — Updated `cat()` print string and comment from "5-category" to "3-category". — **Task 2** (cosmetic)
