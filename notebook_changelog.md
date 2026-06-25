@@ -1001,3 +1001,18 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 13: Replaced bare `mice(data_impute, m=5, method="pmm", seed=123)` with a custom call using `make.method()` and `make.predictorMatrix()`. `cohort_eligible` is set to `method=""` (predictor-only, never imputed) and its predictor-matrix row is zeroed (nothing predicts it). `maxit` increased from default 5 to 20 for better MICE convergence with the expanded predictor frame. The completed-dataset assembly now drops `cohort_eligible` from `complete(imp, i)` before `cbind` to avoid a duplicate column (it already exists in `data_nonimpute`).
 
 **Why:** The previous imputation did not condition on AHRF membership. PMM matched missing-value donors from the full MV population, biasing imputed `sf_ratio`, `ph`, `laps2` for AHRF patients toward the (healthier) MV distribution. This left the within-AHRF `sf_ratio` SD at 0.318 (vs ~1.0 for properly scaled variables), inflating the Hessian condition number ~10× in the `sf_ratio` direction and contributing to the "Rescale variables?" convergence warning. Adding `cohort_eligible` as a predictor causes PMM to match AHRF patients to other AHRF patients, producing AHRF-appropriate imputed values. (R1 Minor #6 / CLAUDE.md Task 1 prerequisite.)
+
+## 2026-06-25 (continued)
+
+### ltvv_regression.ipynb
+
+**Cells changed:** new cell inserted at position 17 (between former cells 16 and 17; all downstream cell indices shifted by 1)
+**Task:** Post-split AHRF rescaling — convergence warning reduction (CLAUDE.md Task 1 prerequisite)
+
+**What changed:**
+- New cell inserted after the AHRF/MV day-1/subsequent split (cell 16) and before era derivation (now cell 18).
+- Computes AHRF-specific mean and SD for sf_ratio, ph, laps2 from ahrf_data[[1]] (all AHRF patient-days, imputation 1).
+- Applies identical rescaling to all 5 imputations of ahrf_data, initial_ahrf_data, and subsequent_ahrf_data. mv_data and its sub-cohorts are intentionally not rescaled.
+- Stores ahrf_compound_sds for Task 7 OR-per-raw-unit conversion: OR per 10 mmHg sf_ratio = OR_model ^ (1 / ahrf_compound_sds["sf_ratio"]).
+
+**Why:** The full-MV-cohort z-scoring in prepare_data() leaves sf_ratio at SD=0.318 within AHRF (AHRF patients have restricted oxygenation by clinical definition). This inflates the Hessian curvature ~10x in the sf_ratio direction, contributing to the "Rescale variables?" convergence warning. Post-split rescaling to AHRF-specific SD reduces this contribution. Clinical ORs are invariant to linear rescaling (OR per raw unit unchanged).
