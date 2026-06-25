@@ -988,3 +988,16 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - **Cell 37** (modified) — Updated markdown heading from "ICU Type 5-Category Distribution" to "3-Category Distribution". — **Task 2** (cosmetic)
 
 - **Cell 38** (modified) — Updated `cat()` print string and comment from "5-category" to "3-category". — **Task 2** (cosmetic)
+
+## 2026-06-25
+
+### ltvv_regression.ipynb
+
+**Cells changed:** 12 (modified), 13 (modified)
+**Task:** Imputation model correction — methodological fix for MICE conditioning on AHRF membership
+
+**What changed:**
+- Cell 12: Added `cohort_eligible = data$cohort_eligible` as a sidecar column to `data_impute` (after the existing `data_nonimpute` split, so `vars_for_impute` and `data_nonimpute` are unchanged). `cohort_eligible` is preserved in `data_nonimpute` for the AHRF/MV split in cell 15.
+- Cell 13: Replaced bare `mice(data_impute, m=5, method="pmm", seed=123)` with a custom call using `make.method()` and `make.predictorMatrix()`. `cohort_eligible` is set to `method=""` (predictor-only, never imputed) and its predictor-matrix row is zeroed (nothing predicts it). `maxit` increased from default 5 to 20 for better MICE convergence with the expanded predictor frame. The completed-dataset assembly now drops `cohort_eligible` from `complete(imp, i)` before `cbind` to avoid a duplicate column (it already exists in `data_nonimpute`).
+
+**Why:** The previous imputation did not condition on AHRF membership. PMM matched missing-value donors from the full MV population, biasing imputed `sf_ratio`, `ph`, `laps2` for AHRF patients toward the (healthier) MV distribution. This left the within-AHRF `sf_ratio` SD at 0.318 (vs ~1.0 for properly scaled variables), inflating the Hessian condition number ~10× in the `sf_ratio` direction and contributing to the "Rescale variables?" convergence warning. Adding `cohort_eligible` as a predictor causes PMM to match AHRF patients to other AHRF patients, producing AHRF-appropriate imputed values. (R1 Minor #6 / CLAUDE.md Task 1 prerequisite.)
