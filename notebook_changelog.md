@@ -1016,3 +1016,16 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Stores ahrf_compound_sds for Task 7 OR-per-raw-unit conversion: OR per 10 mmHg sf_ratio = OR_model ^ (1 / ahrf_compound_sds["sf_ratio"]).
 
 **Why:** The full-MV-cohort z-scoring in prepare_data() leaves sf_ratio at SD=0.318 within AHRF (AHRF patients have restricted oxygenation by clinical definition). This inflates the Hessian curvature ~10x in the sf_ratio direction, contributing to the "Rescale variables?" convergence warning. Post-split rescaling to AHRF-specific SD reduces this contribution. Clinical ORs are invariant to linear rescaling (OR per raw unit unchanged).
+
+---
+
+## 2026-06-25
+
+**Notebook:** ltvv_wrangler.ipynb
+**Cells changed:** 11 (modified), 12 (modified)
+**Task:** Duplicate-row fix (provider_data fanout — no CLAUDE.md task number; identified during code review)
+**What changed:**
+- Cell 11: Added `QUALIFY ROW_NUMBER() OVER (PARTITION BY hospitalizations_joined_id, DATE(recorded_date), CAST(recorded_hour AS INT) ORDER BY hospitalization_id DESC) = 1` to the `provider_data` CTE. This deduplicates the provider table to one row per (hospitalizations_joined_id, date, recorded_hour) before the LEFT JOIN in `reps_with_prov`, eliminating the fanout that was creating duplicate rows in the `data` temp table. Tiebreaker `ORDER BY hospitalization_id DESC` selects the later sub-encounter (e.g. `_2` over `_1`).
+- Cell 12: Applied the identical QUALIFY clause to the `provider_data` CTE in the Task 20 `task20_episode_counts` materialization so provider drop-off counts remain consistent.
+
+**Why:** The `provider_path` (clif_provider.parquet) can have multiple rows per (hospitalizations_joined_id, date, recorded_hour) when provider records from sub-encounters (e.g. fv001_1 and fv001_2) both match the join key, or when overlapping shift handoffs produce two active provider records at the same hour. The unconstrained LEFT JOIN fanned each `all_reps` row (already deduplicated to 1 per hospitalization-date by QUALIFY in day1_recs/subseq_recs) into N rows — one per matching provider record — producing the observed duplicate rows in `data`.
