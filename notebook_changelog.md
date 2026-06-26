@@ -1042,3 +1042,24 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 17 (deleted): Removed the full post-split AHRF rescaling block, including `ahrf_rescale_vars`, `ahrf_scale_stats`, `rescale_datasets()`, the three `rescale_datasets()` calls on `ahrf_data`/`initial_ahrf_data`/`subsequent_ahrf_data`, and `ahrf_compound_sds`. No downstream cell referenced `ahrf_compound_sds`.
 
 **Why:** The AHRF-specific re-z-scoring (double z-scoring: first on full MV cohort in `prepare_data()`, then again within the AHRF sub-cohort) was added during a convergence troubleshooting period but was confirmed not to be the root cause of the convergence warnings — era collapse (Task 5, cell 18) and the bobyqa gradient-restart optimizer (cell 5) resolved those. Retaining double z-scoring created: (1) a non-standard, hard-to-justify methodology for Chest Critical Care reviewers; (2) an asymmetry where AHRF models were on a different scale than MV models; (3) a fragile two-layer `compound_sds` chain for OR back-conversion that was a potential source of reporting error. The BMI cap in cell 12 was deliberately kept — it is data cleaning (not troubleshooting), correcting an impossible raw value of 24,039 kg/m². OR estimates for `sf_ratio`, `ph`, and `laps2` in the AHRF models will change slightly on next run; re-run all three AHRF models to update Table 2.
+
+---
+## 2026-06-26
+
+**Notebook:** ltvv_regression.ipynb
+**Cells changed:** 16, 42, 43, 44, 46, 47, 49, 55, 56, 69, 70, 71, 72, 73, 75, 81, 104, 105, 106, 107, 108, 110, 116, 117
+**Task:** Task 6 — label consistency
+**What changed:** Renamed "Initial"/"initial" → "Day 1" and "Subsequent"/"subsequent" → "Subsequent Days" in all display strings: plot titles, table titles, markdown headers, message() calls, and cat/sprintf strings. 50 replacements total. Variable names (initial_mv_data, subsequent_ahrf_data, etc.) and the SQL/data column initial_vent_day are unchanged.
+**Why:** CLAUDE.md Task 6 mandates "Day 1" and "Subsequent Days" as canonical stratum labels for publication output (consistent with Task 6 header-row requirement and Table 2 labeling).
+
+---
+## 2026-06-26
+
+**Notebook:** ltvv_wrangler.ipynb
+**Cells changed:** Cell 14 (modified)
+**Task:** Task 14 — Non-VC Mode Exclusion Count (R2 Minor #3) — bug fix
+
+**What changed:**
+- Cell 14: Replaced `day1_all` and `subseq_all` CTEs (which picked the first IMV row at the measurement window regardless of null status) with `day1_has_vt` and `subseq_has_vt` CTEs that GROUP BY patient/patient-day and use `MAX(CASE WHEN tidal_volume_set IS NOT NULL THEN 1 ELSE 0 END)` to flag whether ANY row in the window has a valid Vt. Exclusion is now `has_vt = 0` (zero non-null rows in window). In the mode breakdown query, replaced the `tidal_volume_set IS NULL` filter (which incorrectly included patients who had a valid Vt later in the window) with a join to `day1_has_vt`/`subseq_has_vt` on `has_vt = 0`, then `QUALIFY ROW_NUMBER() = 1` to get the first row's mode for truly excluded patients/days.
+
+**Why:** The prior logic identified a patient/patient-day as "excluded" if the first IMV row at the measurement window had a null Vt. But the main analysis (Task 1) picks the first NON-null Vt in the window — so a patient whose first row is null but second row has a valid Vt would be included in the main analysis but miscounted as excluded in Task 14. This overstated the exclusion count. The fix aligns Task 14's definition of exclusion with the main analysis: a patient/patient-day is excluded only if NO non-null Vt exists anywhere in the measurement window.
