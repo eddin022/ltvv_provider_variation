@@ -1029,3 +1029,16 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 12: Applied the identical QUALIFY clause to the `provider_data` CTE in the Task 20 `task20_episode_counts` materialization so provider drop-off counts remain consistent.
 
 **Why:** The `provider_path` (clif_provider.parquet) can have multiple rows per (hospitalizations_joined_id, date, recorded_hour) when provider records from sub-encounters (e.g. fv001_1 and fv001_2) both match the join key, or when overlapping shift handoffs produce two active provider records at the same hour. The unconstrained LEFT JOIN fanned each `all_reps` row (already deduplicated to 1 per hospitalization-date by QUALIFY in day1_recs/subseq_recs) into N rows — one per matching provider record — producing the observed duplicate rows in `data`.
+
+## 2026-06-25 (continued)
+
+### ltvv_regression.ipynb
+
+**Cells changed:** Cell 12 (comment fix); Cell 17 (deleted entirely; was the post-split AHRF rescaling cell — all downstream cells shifted back by 1)
+**Task:** Code cleanup — remove troubleshooting-era post-split AHRF rescaling (no CLAUDE.md task number; Chest Critical Care submission simplification)
+
+**What changed:**
+- Cell 12: Corrected comment "outside 10-100" → "outside 10-80" to match the actual `pmin(pmax(..., 10), 80)` cap applied.
+- Cell 17 (deleted): Removed the full post-split AHRF rescaling block, including `ahrf_rescale_vars`, `ahrf_scale_stats`, `rescale_datasets()`, the three `rescale_datasets()` calls on `ahrf_data`/`initial_ahrf_data`/`subsequent_ahrf_data`, and `ahrf_compound_sds`. No downstream cell referenced `ahrf_compound_sds`.
+
+**Why:** The AHRF-specific re-z-scoring (double z-scoring: first on full MV cohort in `prepare_data()`, then again within the AHRF sub-cohort) was added during a convergence troubleshooting period but was confirmed not to be the root cause of the convergence warnings — era collapse (Task 5, cell 18) and the bobyqa gradient-restart optimizer (cell 5) resolved those. Retaining double z-scoring created: (1) a non-standard, hard-to-justify methodology for Chest Critical Care reviewers; (2) an asymmetry where AHRF models were on a different scale than MV models; (3) a fragile two-layer `compound_sds` chain for OR back-conversion that was a potential source of reporting error. The BMI cap in cell 12 was deliberately kept — it is data cleaning (not troubleshooting), correcting an impossible raw value of 24,039 kg/m². OR estimates for `sf_ratio`, `ph`, and `laps2` in the AHRF models will change slightly on next run; re-run all three AHRF models to update Table 2.
