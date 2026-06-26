@@ -323,3 +323,15 @@ outside-transfer patients in the cohort and the typical lag between true
 intubation and first local EHR charting; these quantities are not directly
 observable from the available data structure.
 
+
+---
+Task 14 — Non-VC Mode Exclusion Count | 2026-06-26
+===
+Confirmed numbers (from fixed query, 2026-06-26):
+- Day-1: 24,572 patients reached the ≥5h measurement window; 24,285 (98.8%) had a valid tidal_volume_set and were included; 287 (1.2%) had no non-null tidal_volume_set anywhere in the window and were excluded.
+- Subsequent-day: 130,620 patient-days reached the post-14:00 window; 115,540 (88.5%) included; 15,080 (11.5%) excluded.
+- Of excluded day-1 patients: 193 (67.2%) were on a non-volume-control mode (Pressure Control, Pressure Support/CPAP, APRV, SIMV, Blow-by, Other); 94 (32.8%) were on AC-VC or an unknown mode with no Vt charted (data gap).
+- Of excluded subsequent patient-days: 11,370 (75.4%) were on a non-volume-control mode; 3,710 (24.6%) were data gaps.
+
+DRAFT METHODS/LIMITATIONS PARAGRAPH FOR CLAIRE:
+Patient-days on which the attending ventilator mode at the measurement window was not volume-control were excluded from the primary analysis, as set tidal volume is not defined for pressure-targeted modes. Among Day-1 observations, 287 of 24,572 patients (1.2%) were excluded at this step; of these, 193 (67%) were on a non-volume-control mode (most commonly pressure control or pressure support/CPAP) and 94 (33%) had no tidal volume recorded despite a volume-control mode designation, representing charting gaps. Among subsequent-day observations, 15,080 of 130,620 patient-days (11.5%) were excluded; 11,370 (75%) were on non-volume-control modes and 3,710 (25%) were volume-control days with missing tidal volume documentation. The higher subsequent-day exclusion rate reflects the expected clinical shift toward pressure-support weaning modes as patients progress through their ICU course.

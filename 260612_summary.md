@@ -181,30 +181,36 @@
 **Overall exclusion at measurement window:**
 | Stratum | N total | N included | N excluded | % excluded |
 |---|---|---|---|---|
-| Day-1 (patients) | 24,572 | 10,995 | 13,577 | 55.3% |
-| Subsequent-day (patient-days) | 130,620 | 50,496 | 80,124 | 61.3% |
+| Day-1 (patients) | 24,572 | 24,285 | 287 | 1.2% |
+| Subsequent-day (patient-days) | 130,620 | 115,540 | 15,080 | 11.5% |
+
+*Note: Prior numbers (13,577 day-1 / 80,124 subsequent-day excluded) were from a bug in the Task 14 query that flagged a patient as excluded if the FIRST IMV row in the window had null Vt, even if a later row in the same window had a valid Vt. The main analysis uses the first NON-null Vt, so those patients were actually included. Fixed 2026-06-26.*
 
 **Why rows are excluded — mode breakdown among excluded:**
 
-The large majority are NOT true non-VC mode exclusions. Most are charting gaps: the patient was on Assist Control-Volume Control but `tidal_volume_set` was not charted at the measurement window.
+The majority are true non-VC mode exclusions. Data gaps (VC mode with no Vt charted anywhere in the window) are the minority.
 
 | Category | Day-1 excluded | % | Subsequent-day excluded | % |
 |---|---|---|---|---|
-| **VC mode, Vt not charted (data gap)** | | | | |
-| Assist Control-Volume Control (NULL Vt) | 16,177 | 66.1% | 70,165 | 57.3% |
-| Unknown / NULL mode | 6,786 | 27.7% | 25,840 | 21.1% |
 | **True non-VC mode exclusions** | | | | |
-| Pressure Support / CPAP | 744 | 3.0% | 16,828 | 13.8% |
-| Pressure Control | 388 | 1.6% | 4,523 | 3.7% |
-| SIMV | 248 | 1.0% | 2,873 | 2.3% |
-| APRV | 70 | 0.3% | 876 | 0.7% |
-| Pressure-Regulated Volume Control | 26 | 0.1% | 152 | 0.1% |
-| Blow-by / Other / NAVA | 70 | 0.3% | 1,103 | 0.9% |
+| Pressure Control | 89 | 31.0% | 4,115 | 27.3% |
+| Pressure Support / CPAP | 59 | 20.6% | 5,451 | 36.1% |
+| APRV | 20 | 7.0% | 807 | 5.4% |
+| Blow-by | 11 | 3.8% | 422 | 2.8% |
+| SIMV | 10 | 3.5% | 309 | 2.0% |
+| Other | 4 | 1.4% | 250 | 1.7% |
+| Pressure-Regulated Volume Control | — | — | 12 | 0.1% |
+| NAVA | — | — | 4 | 0.0% |
+| **Subtotal true non-VC** | **193** | **67.2%** | **11,370** | **75.4%** |
+| **VC mode or unknown, Vt not charted (data gap)** | | | | |
+| Assist Control-Volume Control (NULL Vt) | 35 | 12.2% | 1,505 | 10.0% |
+| Unknown / NULL mode | 59 | 20.6% | 2,205 | 14.6% |
+| **Subtotal data gap** | **94** | **32.8%** | **3,710** | **24.6%** |
 
 **Bottom line for Claire (Methods):**
-- True non-VC exclusions (day-1): ~1,527 patients (6.2% of 24,572 at window; 11.2% of excluded)
-- True non-VC exclusions (subsequent-day): ~26,355 patient-days (20.2% of 130,620 at window; 32.9% of excluded)
-- The majority of excluded rows (66–93% depending on stratum) are VC-mode patients where tidal volume simply was not charted at the measurement window — not a mode exclusion
+- True non-VC exclusions (day-1): 193 patients (0.8% of 24,572 at window; 67.2% of excluded)
+- True non-VC exclusions (subsequent-day): 11,370 patient-days (8.7% of 130,620 at window; 75.4% of excluded)
+- Data gaps (VC mode with no Vt charted at all in window) account for the remaining 32–25% of excluded rows — these are genuine missing-data exclusions, not mode exclusions
 ![alt text](task14.png)
 
 ---
@@ -289,7 +295,7 @@ The large majority are NOT true non-VC mode exclusions. Most are charting gaps: 
 | Task 11 — Outside-IMV transfers | **Confirmed** | Yes — draft paragraph written |
 | Task 12 — 66% PPV + adjusted PPV | **Confirmed** | Yes — draft paragraph written |
 | Task 13 — Provider-assignment schematic | **Not started** | No |
-| Task 14 — Non-VC exclusion count | Code complete, runs, but needs final review | No |
+| Task 14 — Non-VC exclusion count | **Confirmed** (bug fixed 2026-06-26) | Yes — numbers ready for Claire |
 | Task 15 — Patients-per-provider sub-cohorts | Code complete, runs, but needs final review | No |
 | Task 16 — Covariate e-Table | Not started (blocked on T1) | No |
 | Task 17 — Figure 2 exact statistics | Code complete, runs, but needs final review | No |
