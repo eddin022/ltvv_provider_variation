@@ -1063,3 +1063,15 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 14: Replaced `day1_all` and `subseq_all` CTEs (which picked the first IMV row at the measurement window regardless of null status) with `day1_has_vt` and `subseq_has_vt` CTEs that GROUP BY patient/patient-day and use `MAX(CASE WHEN tidal_volume_set IS NOT NULL THEN 1 ELSE 0 END)` to flag whether ANY row in the window has a valid Vt. Exclusion is now `has_vt = 0` (zero non-null rows in window). In the mode breakdown query, replaced the `tidal_volume_set IS NULL` filter (which incorrectly included patients who had a valid Vt later in the window) with a join to `day1_has_vt`/`subseq_has_vt` on `has_vt = 0`, then `QUALIFY ROW_NUMBER() = 1` to get the first row's mode for truly excluded patients/days.
 
 **Why:** The prior logic identified a patient/patient-day as "excluded" if the first IMV row at the measurement window had a null Vt. But the main analysis (Task 1) picks the first NON-null Vt in the window — so a patient whose first row is null but second row has a valid Vt would be included in the main analysis but miscounted as excluded in Task 14. This overstated the exclusion count. The fix aligns Task 14's definition of exclusion with the main analysis: a patient/patient-day is excluded only if NO non-null Vt exists anywhere in the measurement window.
+
+---
+## 2026-06-29
+
+**Notebook:** `ltvv_regression.ipynb`
+**Cells changed:** Cell 13 (modified)
+**Task:** Task 7 — MOR Rescaling (BMI fix)
+
+**What changed:**
+- Cell 13: Added `data$bmi_calc <- data$bmi_calc / 5` immediately after the `pmin/pmax` cap line. Updated diagnostic comment to reflect expected post-rescale SD of ~1.2–1.8 (was ~6–9 post-cap only).
+
+**Why:** `pool_fixed_effects` back-transforms z-scored coefficients to "per 1 original unit" by dividing by `original_sds`. Because `original_sds` is computed after this cell runs, pre-dividing by 5 (mirroring the age/10 and sf_ratio/10 pattern) ensures `original_sds["bmi_calc"]` is in per-5 units, so the unscaled OR is per 5 kg/m² — the clinically intuitive unit for the Task 7 comparison table. No other cells changed.
