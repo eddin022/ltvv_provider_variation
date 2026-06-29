@@ -1075,3 +1075,15 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 13: Added `data$bmi_calc <- data$bmi_calc / 5` immediately after the `pmin/pmax` cap line. Updated diagnostic comment to reflect expected post-rescale SD of ~1.2–1.8 (was ~6–9 post-cap only).
 
 **Why:** `pool_fixed_effects` back-transforms z-scored coefficients to "per 1 original unit" by dividing by `original_sds`. Because `original_sds` is computed after this cell runs, pre-dividing by 5 (mirroring the age/10 and sf_ratio/10 pattern) ensures `original_sds["bmi_calc"]` is in per-5 units, so the unscaled OR is per 5 kg/m² — the clinically intuitive unit for the Task 7 comparison table. No other cells changed.
+
+---
+## 2026-06-29
+
+**Notebook:** `ltvv_regression.ipynb`
+**Cells changed:** Cell 7 (modified)
+**Task:** Task 7 — MOR Rescaling (unit labels in rename_terms and custom_order)
+
+**What changed:**
+- Cell 7: Updated three entries in `rename_terms`: `"age" → "Age (per decade)"`, `"bmi_calc" → "BMI (per 5 kg/m²)"`, `"sf_ratio" → "SF Ratio (per 10 units)"`. Updated matching entries in `custom_order` to stay consistent so table row ordering is preserved.
+
+**Why:** The fixed effects tables displayed "Age", "BMI", "SF Ratio" with no units, making it impossible for a reader to know the OR is per decade / per 5 kg/m² / per 10 units. Labels now match the rescaling applied in Cell 13.
