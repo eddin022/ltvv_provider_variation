@@ -1114,6 +1114,18 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 **Why:** LAPS2 was previously z-scored (via `scale_vars`) and then back-transformed by `pool_fixed_effects` (which divides β_scaled by `original_sds["laps2"]`), yielding OR per 1 raw unit of LAPS2 — not clinically interpretable. Dividing by the pre-imputation SD mirrors the age/10, bmi/5, sf_ratio/10 pattern: `original_sds["laps2"]` becomes ≈1, so the back-transform is a no-op and the model OR is per 1 SD of the original LAPS2 distribution. This matches the Task 7 comparison table requirement (LAPS2 per 1 SD alongside MOR, age per decade, P/F per 10 mmHg, BMI per 5 kg/m²).
 
 ---
+## 2026-06-30
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Cells changed:** Cell 13 — `cohort_meta` (modified)
+**Task:** Data quality fix — deterministic hospital_id in `cohort_meta`
+
+**What changed:**
+- Cell 13: Replaced `ANY_VALUE(hospital_id)` with `ARG_MIN(hospital_id, MAKE_TIMESTAMP(YEAR(recorded_date), MONTH(recorded_date), DAY(recorded_date), CAST(recorded_hour AS INT), 0, 0))` in the `ep1` CTE of `cohort_meta`.
+
+**Why:** `hospitalizations_joined_id` is an encounter-stitched key that can span multiple hospitalizations — potentially across different hospitals if a patient was transferred. `ANY_VALUE` is non-deterministic and could return the transfer-destination hospital rather than the intubation hospital. The composite `MAKE_TIMESTAMP` key sorts by both date and hour, which is necessary because a same-day intra-hospital transfer would leave `ARG_MIN(..., recorded_date)` non-deterministic within that calendar day. The `MAKE_TIMESTAMP` approach is consistent with the `ep1_end_local` expression already in the same CTE. For the vast majority of encounters this returns the same value as `ANY_VALUE`, but it is correct by construction for inter-hospital transfer cases.
+
+---
 ## 2026-06-29
 
 **Notebook:** `ltvv_regression.ipynb`
