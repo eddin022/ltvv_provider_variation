@@ -4,6 +4,22 @@ Append-only log of all changes to `.ipynb` files in this project.
 Format: date · notebook · cells · task · what · why.
 
 ---
+## 2026-06-30
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Cells changed:** Cell id=10 (modified), Cell id=11 (modified), Cell id=120 (modified), Cell id=121 (modified), Cell id=122 (new)
+**Task:** Auto-generate cohort flowchart (ad hoc request, not in CLAUDE.md task list)
+
+**What changed:**
+- Cell id=10 (`cohort_meta`): Appended flowchart count captures — `fc_n_hosp_raw` (distinct hospitalizations in the raw hourly resp-support parquet), `fc_n_hosp_post_inclusion` and `fc_n_prov_post_inclusion` (distinct hospitalizations/providers in `cohort_meta` after the episode-1/24h/ICU inclusion filter).
+- Cell id=11 (`data` table, provider ≥25-episode filter): Appended flowchart count captures — `fc_n_hosp_post_prov` and `fc_n_prov_post_prov` (distinct hospitalizations/providers in `data` after the ≥25-day-1-episode provider threshold).
+- Cell id=120 (save final data to parquet): Appended flowchart count captures — `fc_n_hosp_mv`, `fc_n_days_mv`, `fc_n_prov_mv` (hospitalization/day/provider counts for the full MV cohort, from the in-memory `data` DataFrame).
+- Cell id=121 (`ahrf_data` AHRF subset): Appended flowchart count captures — `fc_n_hosp_ahrf`, `fc_n_days_ahrf`, `fc_n_prov_ahrf` (hospitalization/day/provider counts for the AHRF-eligible subset).
+- Cell id=122 (new, inserted at end of notebook): Builds and saves a four-node cohort flow diagram (`intermediate_outputs/cohort_flowchart.png`) using matplotlib, populated entirely from the `fc_n_*` variables captured in the four cells above — raw hourly table → post-inclusion → post-provider-filter → daily resp support, branching to ARDS Cohort and MV Cohort terminal boxes.
+
+**Why:** Replace manually-maintained flowchart numbers with code-derived counts so the figure stays in sync with the data.
+
+---
 
 ## 2026-06-03
 
