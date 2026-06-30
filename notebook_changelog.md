@@ -1087,3 +1087,41 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 7: Updated three entries in `rename_terms`: `"age" → "Age (per decade)"`, `"bmi_calc" → "BMI (per 5 kg/m²)"`, `"sf_ratio" → "SF Ratio (per 10 units)"`. Updated matching entries in `custom_order` to stay consistent so table row ordering is preserved.
 
 **Why:** The fixed effects tables displayed "Age", "BMI", "SF Ratio" with no units, making it impossible for a reader to know the OR is per decade / per 5 kg/m² / per 10 units. Labels now match the rescaling applied in Cell 13.
+
+---
+## 2026-06-29
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Cells changed:** Cell 105 (inserted)
+**Task:** Task 9 — Missingness Table (AHRF cohort)
+
+**What changed:**
+- Cell 105 (new): Mirrors the full-MV missingness table in Cell 104 but filters to `data[data['ahrf_eligible'] == 1]` before computing counts. Reuses `miss_vars` defined in Cell 104. Saves to `etable_task9_missingness_ahrf.xlsx` and prints the same >20% warning check. Uses `ahrf_eligible` which is already on `data` from the Cell 102 AHRF classifier merge, so no ordering dependency on Cell 121.
+
+**Why:** Task 9 requires missingness reporting for the analytic cohort. The primary analysis runs on the AHRF subset, so reviewers need to see missingness within that cohort, not just the full MV population.
+
+---
+## 2026-06-29
+
+**Notebook:** `ltvv_regression.ipynb`
+**Cells changed:** Cell 13 (modified), Cell 7 (modified)
+**Task:** Task 7 — MOR Rescaling (LAPS2 per 1 SD)
+
+**What changed:**
+- Cell 13: Added `laps2_sd <- sd(data$laps2, na.rm = TRUE)` and `data$laps2 <- data$laps2 / laps2_sd` immediately before the `vars_for_impute` definition. Prints the pre-rescale SD for verification.
+- Cell 7: Updated `rename_terms` entry from `"laps2" = "LAPS2 Score"` to `"laps2" = "LAPS2 Score (per 1 SD)"`. Updated matching entry in `custom_order` accordingly.
+
+**Why:** LAPS2 was previously z-scored (via `scale_vars`) and then back-transformed by `pool_fixed_effects` (which divides β_scaled by `original_sds["laps2"]`), yielding OR per 1 raw unit of LAPS2 — not clinically interpretable. Dividing by the pre-imputation SD mirrors the age/10, bmi/5, sf_ratio/10 pattern: `original_sds["laps2"]` becomes ≈1, so the back-transform is a no-op and the model OR is per 1 SD of the original LAPS2 distribution. This matches the Task 7 comparison table requirement (LAPS2 per 1 SD alongside MOR, age per decade, P/F per 10 mmHg, BMI per 5 kg/m²).
+
+---
+## 2026-06-29
+
+**Notebook:** `ltvv_regression.ipynb`
+**Cells changed:** Cell 13 (modified), Cell 7 (modified)
+**Task:** Task 7 — MOR Rescaling (Elixhauser per 1 SD)
+
+**What changed:**
+- Cell 13: Added `elix_vw_sd <- sd(data$elix_vw, na.rm = TRUE)` and `data$elix_vw <- data$elix_vw / elix_vw_sd` immediately before the `vars_for_impute` definition (alongside the analogous laps2 rescaling added same date).
+- Cell 7: Updated `rename_terms` entry from `"elix_vw" = "Elixhauser Score"` to `"elix_vw" = "Elixhauser Score (per 1 SD)"`. Updated matching `custom_order` entry accordingly.
+
+**Why:** Same rationale as laps2 (entry above): a 1-unit change in the van Walraven Elixhauser score is not clinically interpretable. Pre-dividing by its SD makes `original_sds["elix_vw"]` ≈ 1, so the `pool_fixed_effects` back-transform is a no-op and the reported OR is per 1 SD of Elixhauser. Elixhauser is not in the Task 7 MOR comparison table, but this improves interpretability in the supplementary covariate e-table (Task 16).
