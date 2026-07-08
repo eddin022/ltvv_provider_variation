@@ -1153,3 +1153,30 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Cell 7: Updated `rename_terms` entry from `"elix_vw" = "Elixhauser Score"` to `"elix_vw" = "Elixhauser Score (per 1 SD)"`. Updated matching `custom_order` entry accordingly.
 
 **Why:** Same rationale as laps2 (entry above): a 1-unit change in the van Walraven Elixhauser score is not clinically interpretable. Pre-dividing by its SD makes `original_sds["elix_vw"]` ≈ 1, so the `pool_fixed_effects` back-transform is a no-op and the reported OR is per 1 SD of Elixhauser. Elixhauser is not in the Task 7 MOR comparison table, but this improves interpretability in the supplementary covariate e-table (Task 16).
+
+---
+## 2026-07-07
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Cells changed:** Cell `fc_summary` (added at index 123)
+**Task:** Figure 1 flowchart numbers summary
+
+**What changed:**
+- Added new code cell immediately before the flowchart figure cell. Prints all `fc_` variables organized by flowchart box (Boxes 1–5b), computes excluded-encounter counts as differences between successive stages, and notes that trach/ECMO patient-day exclusion counts are not yet tracked with `fc_` variables.
+
+**Why:** Provides a single place to read all flowchart numbers after a full notebook run, eliminating the need to scan scattered `fc_` assignments across earlier cells. Supports the revised Figure 1 structure (5-box layout without `fc_n_prov_post_inclusion`) recommended for Chest Critical Care submission. Provider counts now reflect the `data` DataFrame (measurement-hour join, post-≥25 threshold, post-Cell-96 exclusions) rather than the broad hourly-table join used by the old `fc_n_prov_post_inclusion`.
+
+---
+## 2026-07-07 (2)
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Cells changed:** `fc_summary` (removed); id=123 diagram cell (removed); `fc_flowchart_header` (added, markdown); `fc_flowchart_counts` (added, code) — both inserted at index 120–121, immediately before the "Save final data to parquet" section
+**Task:** Figure 1 flowchart numbers summary (revision)
+
+**What changed:**
+- Removed the matplotlib flowchart diagram cell (superseded; figure will be built externally from printed counts).
+- Removed the prior `fc_summary` cell (replaced by the two cells below).
+- Added markdown header `## Figure 1 Flowchart Numbers`.
+- Added code cell that inlines computation of final MV and AHRF counts from `data`/`ahrf_data_fc`, then prints all five boxes and their exclusion counts in plain text.
+
+**Why:** User requested a simple printed output rather than a rendered diagram. Placing the cells before the save section keeps all analysis output together before the parquet write. Variables are computed inline so the cell does not depend on the fc_ assignments in the save cells below it.
