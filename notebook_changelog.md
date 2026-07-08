@@ -1180,3 +1180,18 @@ Changed `factor(term_pretty, levels = rev(intersect(custom_order, unique(term_pr
 - Added code cell that inlines computation of final MV and AHRF counts from `data`/`ahrf_data_fc`, then prints all five boxes and their exclusion counts in plain text.
 
 **Why:** User requested a simple printed output rather than a rendered diagram. Placing the cells before the save section keeps all analysis output together before the parquet write. Variables are computed inline so the cell does not depend on the fc_ assignments in the save cells below it.
+
+## 2026-07-08
+
+**Notebook:** `ltvv_wrangler.ipynb`
+**Cells changed:** Cell index 123 (Figure 1 flowchart numbers summary)
+**Task:** Figure 1 update — split VC-Vt exclusion into its own box (R3 Minor #11 / Task 20)
+
+**What changed:**
+- Split the combined Box 2→3 exclusion (previously "no qualifying raw Vt + attending <25 patients" together) into two separate steps.
+- Inserted new Box 3 — "Encounters with Qualifying Volume-Control Vt" — showing `fc_n_hosp_post_inclusion - fc_n_no_qualifying_vt` encounters.
+- Box 2→3 exclusion now shows only `fc_n_no_qualifying_vt` with reason "no qualifying volume control ventilation at ≥5h post-intubation".
+- Box 3→4 exclusion now shows only the provider-threshold drop (attending <25 intubated patients).
+- Renumbered downstream boxes: old Box 3 → Box 4, old Box 4 → Box 5, old Box 5a/5b → Box 6a/6b.
+
+**Why:** Reviewer (R3 Minor #11) requested the VC-ventilation exclusion be made explicit and separate in the flow diagram rather than bundled with the provider-threshold step.
