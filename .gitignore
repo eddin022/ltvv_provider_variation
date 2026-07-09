@@ -11,6 +11,7 @@
 !umn_models_to_share/*.rds
 !DXCCSR_map.csv
 !DXCCSR_naming_convention.csv
+!nucc_taxonomy_250.csv
 *.rda
 *.xlsx
 *.xls
