@@ -1,6 +1,6 @@
 packages <- c(
   "tidyverse", "lubridate", "collapse", "data.table", "pscl",
-  "arrow", "jsonlite", "duckdb"
+  "broom", "arrow", "jsonlite", "duckdb"
 )
 
 install_if_missing <- function(pkg) {

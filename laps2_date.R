@@ -10,6 +10,7 @@ library(lubridate)
 library(collapse)
 library(data.table)
 library(pscl)
+library(broom)
 
 laps2_date <- function(data=NULL, clif_adt=NULL, clif_labs=NULL, clif_hospitalization=NULL, clif_patient=NULL, clif_vitals=NULL, clif_gcs=NULL, timezone = "America/Chicago") {
     # Check that required dataframes exist. Use global dataframe is not explicitly provided
