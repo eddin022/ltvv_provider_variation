@@ -5,6 +5,7 @@
     "db": "/path/to/intermediate_outputs/ltvv.duckdb"
   },
   "R_timezone": "America/Chicago",
+  "rscript_path": "RSCRIPT_PATH",
   "hospital_id_map": {
     "YOUR_REFERENCE_HOSPITAL_NAME": "Hospital Ref",
     "YOUR_HOSPITAL_B_NAME": "Hospital 1",
