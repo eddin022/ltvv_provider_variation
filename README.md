@@ -110,8 +110,8 @@ flowchart TD
 
     subgraph wrangler_group [" "]
         wrangler[ltvv_wrangler.ipynb]
-        wrangler -->|subprocess| laps2
-        wrangler -->|subprocess| ards
+        wrangler -->laps2
+        wrangler -->ards
         laps2 -->|laps2_data.parquet| wrangler
         ards -->|ards_classifier_cohort.csv| wrangler
     end
