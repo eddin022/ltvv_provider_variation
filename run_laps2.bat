@@ -13,5 +13,7 @@ if not defined RSCRIPT (
 )
 
 "%RSCRIPT%" "laps2_wrangler.R"
+set RCODE=%ERRORLEVEL%
 
 popd
+exit /b %RCODE%

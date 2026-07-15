@@ -13,5 +13,7 @@ if not defined RSCRIPT (
 )
 
 "%RSCRIPT%" "ards_classifier.R"
+set RCODE=%ERRORLEVEL%
 
 popd
+exit /b %RCODE%
