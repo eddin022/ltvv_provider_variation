@@ -12,6 +12,18 @@ if not defined RSCRIPT (
     set "RSCRIPT=Rscript"
 )
 
+:: If RSCRIPT points into a conda env, add that env's DLL directories to PATH
+:: so Windows can find the required shared libraries (fixes 0xC0000135).
+:: Expected layout: ...\envs\myR\lib\R\bin\x64\Rscript.exe
+::   → env root  = ...\envs\myR
+for %%F in ("%RSCRIPT%") do set "RSCRIPT_DIR=%%~dpF"
+:: go up: x64 -> bin -> R -> lib -> envs\myR  (4 levels)
+for %%A in ("%RSCRIPT_DIR%..") do for %%B in ("%%~fA\..") do ^
+for %%C in ("%%~fB\..") do for %%D in ("%%~fC\..") do set "CONDA_ENV=%%~fD"
+if exist "%CONDA_ENV%\Library\bin" (
+    set "PATH=%CONDA_ENV%\Library\bin;%CONDA_ENV%\Library\mingw-w64\bin;%CONDA_ENV%\Scripts;%CONDA_ENV%\bin;%PATH%"
+)
+
 "%RSCRIPT%" "laps2_wrangler.R"
 set RCODE=%ERRORLEVEL%
 
