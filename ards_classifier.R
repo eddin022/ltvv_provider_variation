@@ -1,40 +1,10 @@
 # %% [markdown]
 # <h1> "cohort_identification_ards_classifier" </h1>
-# 
-# - author: Chad et al - modified by CE
+#
+# Identifies the persistent AHRF (acute hypoxemic respiratory failure) cohort
+# from CLIF-formatted EHR data. Adapted from Hochberg et al.
 # - date: "`r Sys.Date()`"
 # - output: html_document
-
-# %%
-# # stick with hospitalizations_joined_id
-# # change encounter_block for hospitalizations_joined_id
-
-
-# # include in my code
-# # trach do they have a 1 within 24hr, if so gone
-# if first location is icu and first device is IMV we exclude
-# make sure quality check fi02 and peep data chunk is in there - line 667
-# proseva inclusion criteria - line 703
-# vent_episode_sequence_hour <= 96 etc for proseva hours
-# ltvv -> <=6.1
-
-
-# check baseline ltvv-6 in cohort from chads output
-# why is line 1386 - 1394 joins NOT working??
-
-# %%
-# fine to run chad's code get chad's output
-# use that output as baseline for my code
-# 3k ards 50k MV
-
-# remember
-# joining back chad uses encounter_block > hsould be akin to hospitalizations_joined_id but not exactly the same
-# bring bak join on hospitalization_id include as yes included in database
-# what need to find clif_hospitalizations_joined_id
-# going forward use clif_hospitalizations_joined_id
-# just make sure hospitalizations_joined_id and date
-
-# make sure when join t_enrollement is between admit and discharge
 
 # %% [markdown]
 # <h1> Project configuration </h1>
@@ -64,8 +34,6 @@ cfg <- fromJSON(paste(txt, collapse = "\n"))
 
 tables_location <- cfg$paths$clif
 data_path <- "all_hosp_ids_on_vent.parquet"
-project_location <- ""
-ccrd_data <- ""
 
 resp_path <- file.path(tables_location, "clif_respiratory_support.parquet")
 diagnosis_path <- file.path(tables_location, "clif_admission_diagnosis.parquet")
@@ -192,7 +160,6 @@ append_status(script_name, "imv_cohort_created", list(path = "all_hosp_ids_on_ve
 #ARDS Reviewed Merge with Cohort ID and Encounter Block
 ards_reviewed <- open_dataset(data_path) |>
   collect()
-head(ards_reviewed, 5)
 
 # %% [markdown]
 # <h1> Declare which CLIF tables are required and verify they exist </h1>
@@ -361,9 +328,6 @@ hospital_blocks <- clif_hospitalization |>
   arrange(patient_id, admission_dttm) |>
   collect()
 
-
-#add chunk - CE added, if UTC fine, if us/central then need to change below
-hospital_blocks |> glimpse()
 
 
 # %%
@@ -1213,21 +1177,12 @@ proseva_prone_table <- proseva_prone_table |>
 # <h1> Rescue therapies in eligibility window: NMB and pulmonary vasodilators </h1>
 
 # %%
-temp_times
-
-# %%
 if (nzchar(Sys.getenv("CONDA_PREFIX"))) {
   Sys.setenv(TZDIR = file.path(Sys.getenv("CONDA_PREFIX"), "share", "zoneinfo"))
 }
 
-# %%
-Sys.getenv("myR")
-R.home()
-Sys.which("R")
-
 
 # %%
-# CE edited below
 
 # %%
 nmb <- clif_medication_admin_continuous |> 
@@ -1333,10 +1288,6 @@ compliance_tv <- clif_respiratory_support |>
   left_join(ecmo_summary, by = c("patient_id", "encounter_block")) |>
   filter(is.na(ecmo_start) | is.na(ecmo_end) | (recorded_dttm <= ecmo_start | recorded_dttm >= ecmo_end))
 
-summary(compliance_tv$tidal_volume_set)
-summary(compliance_tv$plateau_pressure_obs)
-summary(compliance_tv$peep_set)
-
 #Make Outliers NA
 compliance_tv <- compliance_tv |>
   mutate(tidal_volume_set=fifelse(
@@ -1346,13 +1297,6 @@ compliance_tv <- compliance_tv |>
          plateau_pressure_obs=fifelse(
           plateau_pressure_obs<=5 | plateau_pressure_obs>=80, NaN, plateau_pressure_obs
         ))
-
-summary(compliance_tv$tidal_volume_set)
-hist(compliance_tv$tidal_volume_set)
-summary(compliance_tv$plateau_pressure_obs)
-hist(compliance_tv$plateau_pressure_obs)
-summary(compliance_tv$peep_set)
-hist(compliance_tv$peep_set)
 
 #Mark Eligible Vent Modes for LPV Assessment
 eligible_modes <- c('Assist Control-Volume Control', 'Pressure Control', 'Pressure-Regulated Volume Control', 'SIMV')
@@ -1487,10 +1431,6 @@ hospital_location <- clif_adt |>
   mutate(enrollment_icu=fcase(
     enrollment_icu==1, location_name
   )) |>
-  #2 Patients in Weinberg 5C and Called a Ward, but it is not
-  # mutate(enrollment_icu=fifelse(
-  #   is.na(enrollment_icu) & location_name=='JHH WEINBERG 5C', location_name, enrollment_icu
-  # )) |>
  #Finally Fill In Enrollment ICU and Hospital ID
  mutate(hospital_id=fifelse(location_name==enrollment_icu, hospital_id, NA_character_)) |>
  fill(enrollment_icu, hospital_id, .direction = 'updown') |>
@@ -1625,24 +1565,6 @@ bmi <- clif_vitals |>
   #Calculate BMI
   mutate(bmi=study_weight_kg/((study_height_cm/100)^2)) |>
   select(patient_id, encounter_block, vent_episode_start, vent_episode_end, study_height_cm, study_weight_kg, bmi)
-
-
-# %%
-# #NOT USED in Classifier; Currently Only Mapped in JH-CCRD (not CLIF, but coming soon)
-# encounter_blocks <- ards_reviewed |>
-#   select(patient_id, encounter_block, hospitalization_id) 
-
-# elixhauser <- open_dataset(paste0(ccrd_data, 'elixhauser_index_output.parquet')) |>
-#   rename(hospitalization_id = pat_enc_csn_id) |>
-#   filter(hospitalization_id %in% ards_reviewed$hospitalization_id) |>
-#   left_join(encounter_blocks) |>
-#   collect() |>
-#   rowwise() |>
-#   mutate(elixhauser_count = sum(c_across(CMR_AIDS:CMR_WGHTLOSS), na.rm = TRUE)) |>
-#   ungroup() |>
-#   select(patient_id, encounter_block, 
-#          CMR_VERSION:CMR_Index_Mortality, elixhauser_count) |>
-#   distinct()
 
 
 # %%

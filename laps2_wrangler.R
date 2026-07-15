@@ -3,7 +3,7 @@ library(dplyr)
 library(lubridate)
 library(jsonlite)
 
-source("Z:/DataStageData/Eddington/R Library/functions/laps2_date_260402.R")
+source("laps2_date.R")
 
 append_status <- function(script_name, step, extra = list()) {
   entry <- c(
@@ -44,17 +44,9 @@ clif_gcs <- read_parquet(file.path(clif_path, "clif_gcs.parquet"))
 append_status(script_name, "loaded_clif_tables")
 
 # %%
-head(data_hospitalizations, 5)
-
-# %%
-length(data_hospitalizations$hospitalizations_joined_id)
-
-# %%
 laps2 <- laps2_date(data = data_hospitalizations, timezone = user_timezone)
 append_status(script_name, "computed_laps2")
 
 # %%
 write_parquet(laps2, "laps2_data.parquet")
 append_status(script_name, "wrote_output", list(path = "laps2_data.parquet"))
-
-laps2

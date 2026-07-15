@@ -1,0 +1,21 @@
+{
+  "paths": {
+    "clif": "/path/to/your/clif/parquet/tables",
+    "raw": "/path/to/intermediate_outputs",
+    "db": "/path/to/intermediate_outputs/ltvv.duckdb"
+  },
+  "R_timezone": "America/Chicago",
+  "hospital_id_map": {
+    "YOUR_REFERENCE_HOSPITAL_NAME": "Hospital Ref",
+    "YOUR_HOSPITAL_B_NAME": "Hospital 1",
+    "YOUR_HOSPITAL_C_NAME": "Hospital 2",
+    "YOUR_HOSPITAL_D_NAME": "Hospital 3",
+    "YOUR_HOSPITAL_E_NAME": "Hospital 4",
+    "YOUR_HOSPITAL_F_NAME": "Hospital 5",
+    "YOUR_HOSPITAL_G_NAME": "Hospital 6",
+    "YOUR_HOSPITAL_H_NAME": "Hospital 7",
+    "YOUR_HOSPITAL_I_NAME": "Hospital 8",
+    "EXCLUDED_HOSPITAL_1": "delete",
+    "EXCLUDED_HOSPITAL_2": "delete"
+  }
+}

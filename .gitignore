@@ -60,3 +60,9 @@ renv/staging/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Scratch outputs
+Rplots.pdf
+
+# Superseded pipelines
+vent_ebp_wrangler.ipynb
